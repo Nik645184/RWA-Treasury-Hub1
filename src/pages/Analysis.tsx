@@ -1,87 +1,86 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Treemap, LineChart, Line } from 'recharts';
-import { mockStocks, mockCryptos, generatePriceHistory, formatNumber } from '@/utils/stocksApi';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Treemap, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Bitcoin, TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Shield, AlertTriangle, DollarSign, BarChart3 } from 'lucide-react';
+import { mockRWAAssets, formatNumber } from '@/utils/rwaApi';
 
 const Analysis = () => {
-  // Mock data for sector performance
+  // RWA Market Analysis Data
   const sectorPerformance = [
-    { name: 'Technology', value: 8.2 },
-    { name: 'Healthcare', value: 3.5 },
-    { name: 'Financials', value: -1.2 },
-    { name: 'Consumer', value: 2.8 },
-    { name: 'Energy', value: -2.5 },
-    { name: 'Materials', value: 0.9 },
-    { name: 'Utilities', value: -0.7 },
+    { name: 'Treasuries', value: 4.2, amount: 4.76 },
+    { name: 'Private Credit', value: 12.5, amount: 12.2 },
+    { name: 'Real Estate', value: 8.8, amount: 50.0 },
+    { name: 'Commodities', value: -2.3, amount: 3.1 },
+    { name: 'Trade Finance', value: 6.7, amount: 1.8 },
+    { name: 'Carbon Credits', value: 15.2, amount: 0.9 },
   ];
   
-  // Mock data for risk assessment
+  // Risk metrics for RWA assets
   const riskData = [
-    { name: 'Volatility', value: 65 },
-    { name: 'Correlation', value: 42 },
-    { name: 'Downside Risk', value: 38 },
-    { name: 'Sharpe Ratio', value: 78 },
-    { name: 'Liquidity', value: 85 },
+    { name: 'Liquidity Risk', value: 35 },
+    { name: 'Regulatory Risk', value: 55 },
+    { name: 'Smart Contract Risk', value: 25 },
+    { name: 'Custody Risk', value: 30 },
+    { name: 'Oracle Risk', value: 40 },
   ];
   
-  // Mock data for portfolio distribution
-  const distributionData = [
-    { name: 'Large Cap', value: 55 },
-    { name: 'Mid Cap', value: 30 },
-    { name: 'Small Cap', value: 15 },
+  // Chain distribution data
+  const chainDistribution = [
+    { name: 'Ethereum', value: 54.8, color: '#627EEA' },
+    { name: 'Polygon', value: 18.3, color: '#8247E5' },
+    { name: 'Avalanche', value: 12.1, color: '#E84142' },
+    { name: 'Stellar', value: 8.5, color: '#14B8A6' },
+    { name: 'Others', value: 6.3, color: '#6B7280' },
   ];
   
-  // Format stock data for the heatmap (treemap)
-  const stockGrowthData = mockStocks
-    .map(stock => ({
-      name: stock.symbol,
-      value: Math.abs(stock.changePercent),
-      changePercent: stock.changePercent
+  // Top RWA assets performance
+  const assetPerformance = mockRWAAssets
+    .map(asset => ({
+      name: asset.symbol,
+      value: Math.abs(asset.changePercent),
+      changePercent: asset.changePercent,
+      tvl: asset.tvl
     }))
-    .sort((a, b) => b.changePercent - a.changePercent);
+    .sort((a, b) => b.tvl - a.tvl);
   
-  // Format cryptocurrency data for analysis
-  const cryptoData = mockCryptos
-    .map(crypto => ({
-      name: crypto.name,
-      symbol: crypto.symbol,
-      value: crypto.marketCap,
-      price: crypto.price,
-      change: crypto.changePercent,
-      marketCap: crypto.marketCap,
-      volume: crypto.volume
-    }))
-    .sort((a, b) => b.value - a.value);
+  // Compliance metrics
+  const complianceData = [
+    { subject: 'KYC/AML', A: 95, fullMark: 100 },
+    { subject: 'SEC Registration', A: 88, fullMark: 100 },
+    { subject: 'MiCA Compliance', A: 75, fullMark: 100 },
+    { subject: 'Tax Reporting', A: 92, fullMark: 100 },
+    { subject: 'Investor Accreditation', A: 85, fullMark: 100 },
+    { subject: 'Audit Compliance', A: 90, fullMark: 100 },
+  ];
   
-  // Generate price history for Bitcoin and Ethereum
-  const [btcHistory, setBtcHistory] = useState(generatePriceHistory(30, 62000, 5));
-  const [ethHistory, setEthHistory] = useState(generatePriceHistory(30, 3200, 6));
+  // Yield comparison data
+  const yieldComparison = [
+    { asset: 'BUIDL', traditional: 5.2, tokenized: 5.4 },
+    { asset: 'USYC', traditional: 5.5, tokenized: 5.8 },
+    { asset: 'OUSG', traditional: 5.0, tokenized: 5.3 },
+    { asset: 'Private Credit', traditional: 8.5, tokenized: 9.2 },
+    { asset: 'Real Estate', traditional: 6.0, tokenized: 7.1 },
+  ];
   
-  // Format historical data for charts
-  const btcHistoryData = btcHistory.map((price, index) => ({
-    day: index + 1,
-    price
-  }));
+  // Monthly growth trend
+  const growthTrend = [
+    { month: 'Jan', aum: 2.1, holders: 280 },
+    { month: 'Feb', aum: 2.3, holders: 295 },
+    { month: 'Mar', aum: 2.8, holders: 310 },
+    { month: 'Apr', aum: 3.2, holders: 325 },
+    { month: 'May', aum: 3.8, holders: 335 },
+    { month: 'Jun', aum: 4.1, holders: 345 },
+  ];
   
-  const ethHistoryData = ethHistory.map((price, index) => ({
-    day: index + 1,
-    price
-  }));
-  
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
+  const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
   
   // Custom content for the treemap
   const CustomizedContent = (props: any) => {
-    const { root, depth, x, y, width, height, index, name, changePercent, value } = props;
-    
-    // Ensure changePercent is defined, default to 0 if not
+    const { x, y, width, height, name, changePercent } = props;
     const safeChangePercent = changePercent ?? 0;
-    
-    // Color based on change percent (green for positive, red for negative)
-    const color = safeChangePercent >= 0 ? "#4ade80" : "#f87171";
+    const color = safeChangePercent >= 0 ? "#10b981" : "#ef4444";
     const cellValue = safeChangePercent >= 0 ? `+${safeChangePercent.toFixed(2)}%` : `${safeChangePercent.toFixed(2)}%`;
 
     return (
@@ -94,8 +93,7 @@ const Analysis = () => {
           style={{
             fill: color,
             stroke: '#fff',
-            strokeWidth: 2 / (depth + 1e-10),
-            strokeOpacity: 1 / (depth + 1e-10),
+            strokeWidth: 2,
           }}
         />
         {width > 50 && height > 30 ? (
@@ -126,290 +124,250 @@ const Analysis = () => {
   };
   
   return (
-    <PageLayout title="Market Analysis">
+    <PageLayout title="RWA Analytics & Risk Assessment">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-card rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Sector Performance (YTD)</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={sectorPerformance}
-                margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`${value}%`, 'Performance']} />
-                <Bar 
-                  dataKey="value" 
-                  name="YTD Performance" 
-                  fill="#8884d8"
-                  radius={[4, 4, 0, 0]}
-                >
-                  {sectorPerformance.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.value >= 0 ? '#4ade80' : '#f87171'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* Sector Performance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              RWA Sector Performance (YTD)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sectorPerformance} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`${value}%`, 'Performance']} />
+                  <Bar dataKey="value" name="YTD %" radius={[4, 4, 0, 0]}>
+                    {sectorPerformance.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.value >= 0 ? '#10b981' : '#ef4444'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
         
-        <div className="lg:col-span-2 bg-card rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Stock Performance Heatmap</h2>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <Treemap
-                data={stockGrowthData}
-                dataKey="value"
-                aspectRatio={4/3}
-                stroke="#fff"
-                fill="#8884d8"
-                content={<CustomizedContent />}
-              />
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p>Showing performance by percentage change. Green indicates positive growth, red indicates decline.</p>
-          </div>
-        </div>
+        {/* Risk Assessment Radar */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-primary" />
+              Risk Assessment Matrix
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={riskData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
+                  <Radar
+                    name="Risk Level"
+                    dataKey="value"
+                    stroke="#ef4444"
+                    fill="#ef4444"
+                    fillOpacity={0.3}
+                  />
+                  <Tooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
         
-        {/* Cryptocurrency Analysis Section */}
-        <div className="lg:col-span-2 mt-4">
-          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <Bitcoin className="text-orange-500" />
-            Cryptocurrency Analysis
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {cryptoData.slice(0, 4).map((crypto) => (
-              <Card key={crypto.symbol} className="bg-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex justify-between">
-                    <span className="flex items-center gap-1">
-                      <span className="font-bold">{crypto.symbol}</span>
-                      <span className="text-muted-foreground text-sm">{crypto.name}</span>
-                    </span>
-                    {crypto.change >= 0 ? (
-                      <TrendingUp className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-red-500" />
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${crypto.price < 1 ? crypto.price.toFixed(4) : crypto.price.toFixed(2)}</div>
-                  <div className={`text-sm ${crypto.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    {crypto.change >= 0 ? '+' : ''}{crypto.change.toFixed(2)}%
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Volume:</span>
-                      <span>{formatNumber(crypto.volume)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Market Cap:</span>
-                      <span>{formatNumber(crypto.marketCap)}</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="bg-card shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Bitcoin className="h-5 w-5 text-orange-500" />
-                  Bitcoin Price History (30 Days)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={btcHistoryData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                      <XAxis dataKey="day" />
-                      <YAxis domain={['auto', 'auto']} />
-                      <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Price']} />
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke="#f7931a" 
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-card shadow">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">Ξ</div>
-                  Ethereum Price History (30 Days)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={ethHistoryData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-                      <XAxis dataKey="day" />
-                      <YAxis domain={['auto', 'auto']} />
-                      <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Price']} />
-                      <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                      <Line 
-                        type="monotone" 
-                        dataKey="price" 
-                        stroke="#3c3c3d" 
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <Card className="mt-6 bg-card shadow">
+        {/* Asset Performance Heatmap */}
+        <div className="lg:col-span-2">
+          <Card>
             <CardHeader>
-              <CardTitle>Top Cryptocurrencies by Market Cap</CardTitle>
+              <CardTitle>RWA Asset Performance Heatmap</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-4">#</th>
-                      <th className="text-left py-3 px-4">Name</th>
-                      <th className="text-right py-3 px-4">Price</th>
-                      <th className="text-right py-3 px-4">24h %</th>
-                      <th className="text-right py-3 px-4">Market Cap</th>
-                      <th className="text-right py-3 px-4">Volume (24h)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cryptoData.map((crypto, index) => (
-                      <tr key={crypto.symbol} className="border-b hover:bg-muted/50">
-                        <td className="py-3 px-4">{index + 1}</td>
-                        <td className="py-3 px-4 font-medium">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{crypto.symbol}</span>
-                            <span className="text-muted-foreground">{crypto.name}</span>
-                          </div>
-                        </td>
-                        <td className="text-right py-3 px-4">
-                          ${crypto.price < 1 ? crypto.price.toFixed(4) : crypto.price.toFixed(2)}
-                        </td>
-                        <td className={`text-right py-3 px-4 ${crypto.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {crypto.change >= 0 ? '+' : ''}{crypto.change.toFixed(2)}%
-                        </td>
-                        <td className="text-right py-3 px-4">{formatNumber(crypto.marketCap)}</td>
-                        <td className="text-right py-3 px-4">{formatNumber(crypto.volume)}</td>
-                      </tr>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <Treemap
+                    data={assetPerformance}
+                    dataKey="value"
+                    aspectRatio={4/3}
+                    stroke="#fff"
+                    content={<CustomizedContent />}
+                  />
+                </ResponsiveContainer>
+              </div>
+              <p className="mt-4 text-sm text-muted-foreground">
+                Asset size represents TVL, color indicates performance (green: positive, red: negative)
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Chain Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Chain Distribution</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={chainDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent).toFixed(1)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chainDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
-                  </tbody>
-                </table>
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value}%`, 'Share']} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Compliance Score */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Regulatory Compliance Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart data={complianceData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 11 }} />
+                  <PolarRadiusAxis domain={[0, 100]} />
+                  <Radar
+                    name="Compliance %"
+                    dataKey="A"
+                    stroke="#10b981"
+                    fill="#10b981"
+                    fillOpacity={0.5}
+                  />
+                  <Tooltip />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Yield Comparison */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-primary" />
+                Traditional vs Tokenized Yield Comparison
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={yieldComparison} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="asset" />
+                    <YAxis label={{ value: 'Yield (%)', angle: -90, position: 'insideLeft' }} />
+                    <Tooltip formatter={(value) => [`${value}%`, 'Yield']} />
+                    <Legend />
+                    <Bar dataKey="traditional" fill="#6b7280" name="Traditional" />
+                    <Bar dataKey="tokenized" fill="#4f46e5" name="Tokenized" />
+                  </BarChart>
+                </ResponsiveContainer>
               </div>
             </CardContent>
           </Card>
         </div>
         
-        <div className="bg-card rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Risk Assessment</h2>
-          <div className="space-y-4">
-            {riskData.map((item) => (
-              <div key={item.name}>
-                <div className="flex justify-between text-sm mb-1">
-                  <span>{item.name}</span>
-                  <span className="font-medium">{item.value}/100</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full ${
-                      item.value >= 70 ? 'bg-green-500' : item.value >= 40 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${item.value}%` }}
-                  ></div>
-                </div>
+        {/* Growth Trend */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>RWA Market Growth Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={growthTrend} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="month" />
+                    <YAxis yAxisId="left" label={{ value: 'AUM ($B)', angle: -90, position: 'insideLeft' }} />
+                    <YAxis yAxisId="right" orientation="right" label={{ value: 'Holders (K)', angle: 90, position: 'insideRight' }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line yAxisId="left" type="monotone" dataKey="aum" stroke="#4f46e5" strokeWidth={2} name="AUM ($B)" />
+                    <Line yAxisId="right" type="monotone" dataKey="holders" stroke="#10b981" strokeWidth={2} name="Holders (K)" />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="bg-card rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Market Capitalization Distribution</h2>
-          <div className="h-64 flex items-center justify-center">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={distributionData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={true}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {distributionData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [`${value}%`, 'Allocation']} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-        
-        <div className="bg-card rounded-lg p-6 shadow">
-          <h2 className="text-xl font-semibold mb-4">Technical Indicators</h2>
-          <div className="space-y-4">
-            <div className="flex justify-between p-3 border rounded-md">
-              <div>
-                <h3 className="font-medium">S&P 500</h3>
-                <p className="text-sm text-muted-foreground">Moving Averages</p>
+        {/* Key Insights */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                Key Risk Indicators & Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-3 border rounded-lg border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20">
+                  <div>
+                    <h3 className="font-medium">Liquidity Fragmentation</h3>
+                    <p className="text-sm text-muted-foreground">Cross-chain liquidity is fragmented across 5+ chains</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-yellow-600">MEDIUM RISK</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg border-green-200 bg-green-50 dark:bg-green-900/20">
+                  <div>
+                    <h3 className="font-medium">Oracle Verification</h3>
+                    <p className="text-sm text-muted-foreground">All assets verified via Chainlink PoR</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-green-600">LOW RISK</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg border-red-200 bg-red-50 dark:bg-red-900/20">
+                  <div>
+                    <h3 className="font-medium">Regulatory Changes</h3>
+                    <p className="text-sm text-muted-foreground">MiCA implementation pending in EU markets</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-red-600">HIGH RISK</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between p-3 border rounded-lg border-green-200 bg-green-50 dark:bg-green-900/20">
+                  <div>
+                    <h3 className="font-medium">Smart Contract Audit</h3>
+                    <p className="text-sm text-muted-foreground">95% of TVL in audited contracts</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-green-600">LOW RISK</p>
+                  </div>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="font-medium text-green-500">BUY</p>
-                <p className="text-sm">12 of 15 indicators</p>
-              </div>
-            </div>
-            <div className="flex justify-between p-3 border rounded-md">
-              <div>
-                <h3 className="font-medium">Nasdaq</h3>
-                <p className="text-sm text-muted-foreground">Moving Averages</p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-green-500">BUY</p>
-                <p className="text-sm">10 of 15 indicators</p>
-              </div>
-            </div>
-            <div className="flex justify-between p-3 border rounded-md">
-              <div>
-                <h3 className="font-medium">Dow Jones</h3>
-                <p className="text-sm text-muted-foreground">Moving Averages</p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-yellow-500">NEUTRAL</p>
-                <p className="text-sm">8 of 15 indicators</p>
-              </div>
-            </div>
-            <div className="flex justify-between p-3 border rounded-md">
-              <div>
-                <h3 className="font-medium">Russell 2000</h3>
-                <p className="text-sm text-muted-foreground">Moving Averages</p>
-              </div>
-              <div className="text-right">
-                <p className="font-medium text-red-500">SELL</p>
-                <p className="text-sm">4 of 15 indicators</p>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </PageLayout>

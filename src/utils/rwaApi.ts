@@ -18,6 +18,7 @@ export interface TokenizedAsset {
   changePercent: number;
   change24h: number;
   marketCap: number;
+  tvl: number; // Total Value Locked
   tokenStandard: string;
   complianceFramework: string[];
   lastAudit: string;
@@ -77,6 +78,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 0.01,
     change24h: 0.0001,
     marketCap: 2420000000,
+    tvl: 2420000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['SEC Registered', 'FINRA Compliant'],
     lastAudit: '2024-12-15',
@@ -101,6 +103,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 0.03,
     change24h: 0.0003,
     marketCap: 854000000,
+    tvl: 854000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['SEC Exempt', 'Reg D'],
     lastAudit: '2024-12-01',
@@ -125,6 +128,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 0.12,
     change24h: 0.13,
     marketCap: 452000000,
+    tvl: 452000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['SEC Registered'],
     lastAudit: '2024-11-30',
@@ -149,6 +153,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: -1.25,
     change24h: -0.03,
     marketCap: 312000000,
+    tvl: 312000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['DeFi Native'],
     lastAudit: '2024-10-15',
@@ -173,6 +178,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 2.35,
     change24h: 0.42,
     marketCap: 256000000,
+    tvl: 256000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['Cayman Islands'],
     lastAudit: '2024-11-01',
@@ -196,6 +202,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: -0.5,
     change24h: -0.005,
     marketCap: 189000000,
+    tvl: 189000000,
     tokenStandard: 'SPL',
     complianceFramework: ['RegTech Compliant'],
     lastAudit: '2024-09-30',
@@ -219,6 +226,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 1.2,
     change24h: 0.62,
     marketCap: 145000000,
+    tvl: 145000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['SEC Reg A+'],
     lastAudit: '2024-08-15',
@@ -242,6 +250,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 3.8,
     change24h: 0.13,
     marketCap: 98000000,
+    tvl: 98000000,
     tokenStandard: 'ERC-721',
     complianceFramework: ['International RE'],
     lastAudit: '2024-07-01'
@@ -263,6 +272,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 0.85,
     change24h: 22.15,
     marketCap: 520000000,
+    tvl: 520000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['NYDFS Regulated'],
     lastAudit: '2024-12-01',
@@ -285,6 +295,7 @@ export const mockRWAAssets: TokenizedAsset[] = [
     changePercent: 0.82,
     change24h: 21.45,
     marketCap: 680000000,
+    tvl: 680000000,
     tokenStandard: 'ERC-20',
     complianceFramework: ['Swiss Regulated'],
     lastAudit: '2024-11-15',
@@ -480,4 +491,13 @@ export function useRWAData(assets: TokenizedAsset[]) {
   }, [assets]);
   
   return data;
+}
+
+// Export formatNumber function for formatting large numbers
+export function formatNumber(value: number): string {
+  if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+  if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+  if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+  if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+  return `$${value.toFixed(2)}`;
 }
