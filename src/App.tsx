@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
-import TreasuryDashboard from "./pages/TreasuryDashboard";
 import NotFound from "./pages/NotFound";
 import TokenizedAssets from "./pages/TokenizedAssets";
 import RWAMarkets from "./pages/RWAMarkets";
@@ -25,8 +24,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<TreasuryDashboard />} />
-          <Route path="/dashboard" element={<Index />} />
+          <Route path="/" element={<Index />} />
           <Route path="/assets" element={<TokenizedAssets />} />
           <Route path="/markets" element={<RWAMarkets />} />
           <Route path="/currencies" element={<Currencies />} />
