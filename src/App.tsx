@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import TokenizedAssets from "./pages/TokenizedAssets";
 import RWAMarkets from "./pages/RWAMarkets";
-import DigitalCurrencies from "./pages/DigitalCurrencies";
+import Currencies from "./pages/Currencies";
 import GlobalOverview from "./pages/GlobalOverview";
 import Portfolio from "./pages/Portfolio";
 import Performance from "./pages/Performance";
@@ -27,7 +27,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/assets" element={<TokenizedAssets />} />
           <Route path="/markets" element={<RWAMarkets />} />
-          <Route path="/currencies" element={<DigitalCurrencies />} />
+          <Route path="/currencies" element={<Currencies />} />
           <Route path="/global" element={<GlobalOverview />} />
           <Route path="/portfolio" element={<Portfolio />} />
           <Route path="/performance" element={<Performance />} />
