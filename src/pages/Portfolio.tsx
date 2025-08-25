@@ -1,136 +1,255 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { PageLayout } from '@/components/layout/PageLayout';
-import { useStockData, mockStocks } from '@/utils/stocksApi';
-import { PieChart, Cell, Pie, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import { RWAAssetCard } from '@/components/rwa/RWAAssetCard';
+import { AssetAllocationChart } from '@/components/rwa/AssetAllocationChart';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { 
+  mockRWAAssets, 
+  formatValue, 
+  calculatePortfolioMetrics,
+  useRWAData,
+  getAssetsByCategory
+} from '@/utils/rwaApi';
+import { 
+  TrendingUp, 
+  TrendingDown, 
+  Shield, 
+  Activity,
+  Layers,
+  PlusCircle,
+  Settings,
+  Download
+} from 'lucide-react';
 
 const Portfolio = () => {
-  const stocks = useStockData(mockStocks);
+  const assets = useRWAData(mockRWAAssets);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   
-  // Mock portfolio data
-  const portfolio = [
-    { symbol: 'AAPL', shares: 15, costBasis: 150.75 },
-    { symbol: 'MSFT', shares: 8, costBasis: 380.25 },
-    { symbol: 'NVDA', shares: 5, costBasis: 820.50 },
-    { symbol: 'GOOGL', shares: 10, costBasis: 145.30 },
+  // Filter assets based on selected category
+  const filteredAssets = selectedCategory === 'all' 
+    ? assets 
+    : assets.filter(a => a.category === selectedCategory);
+  
+  // Calculate portfolio metrics
+  const metrics = calculatePortfolioMetrics(filteredAssets);
+  
+  // Calculate allocation by category
+  const allocationData = [
+    { name: 'Treasuries', value: getAssetsByCategory('treasury').reduce((sum, a) => sum + a.aum, 0) },
+    { name: 'Private Credit', value: getAssetsByCategory('private-credit').reduce((sum, a) => sum + a.aum, 0) },
+    { name: 'Real Estate', value: getAssetsByCategory('real-estate').reduce((sum, a) => sum + a.aum, 0) },
+    { name: 'Commodities', value: getAssetsByCategory('commodity').reduce((sum, a) => sum + a.aum, 0) }
   ];
   
-  // Calculate portfolio values
-  const portfolioItems = portfolio.map(item => {
-    const stock = stocks.find(s => s.symbol === item.symbol);
-    if (!stock) return null;
-    
-    const currentValue = stock.price * item.shares;
-    const costBasis = item.costBasis * item.shares;
-    const gain = currentValue - costBasis;
-    const gainPercent = (gain / costBasis) * 100;
-    
-    return {
-      ...item,
-      name: stock.name,
-      currentPrice: stock.price,
-      currentValue,
-      costBasis,
-      gain,
-      gainPercent
-    };
-  }).filter(Boolean);
-  
-  const totalValue = portfolioItems.reduce((sum, item) => sum + item.currentValue, 0);
-  const totalCost = portfolioItems.reduce((sum, item) => sum + item.costBasis, 0);
-  const totalGain = totalValue - totalCost;
-  const totalGainPercent = (totalGain / totalCost) * 100;
-  
-  // Data for pie chart
-  const pieData = portfolioItems.map(item => ({
-    name: item.symbol,
-    value: item.currentValue
-  }));
-  
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d'];
-  
+  // Top performing assets
+  const topPerformers = [...assets].sort((a, b) => b.changePercent - a.changePercent).slice(0, 3);
+  const topYieldAssets = [...assets].filter(a => a.yield > 0).sort((a, b) => b.yield - a.yield).slice(0, 3);
+
   return (
-    <PageLayout title="Portfolio">
+    <PageLayout title="RWA Portfolio Management">
+      {/* Portfolio Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Portfolio Value
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatValue(metrics.totalValue)}</div>
+            <div className="flex items-center gap-1 mt-1 text-success">
+              <TrendingUp className="h-3 w-3" />
+              <span className="text-xs">+12.5% this month</span>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Average Yield
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.avgYield.toFixed(2)}%</div>
+            <div className="text-xs text-muted-foreground mt-1">Annual percentage yield</div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Risk Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-bold">{metrics.avgRisk.toFixed(0)}/100</div>
+              <Shield className={`h-4 w-4 ${metrics.avgRisk < 40 ? 'text-success' : metrics.avgRisk < 60 ? 'text-warning' : 'text-destructive'}`} />
+            </div>
+            <Progress value={metrics.avgRisk} className="h-1.5 mt-2" />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Diversification
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <div className="text-2xl font-bold">{metrics.diversificationScore.toFixed(0)}%</div>
+              <Layers className="h-4 w-4 text-primary" />
+            </div>
+            <div className="text-xs text-muted-foreground mt-1">Portfolio health score</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <div className="bg-card rounded-lg p-6 shadow">
-            <h2 className="text-xl font-semibold mb-4">Portfolio Summary</h2>
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-muted-foreground">Total Value</p>
-                <p className="text-2xl font-bold">${totalValue.toFixed(2)}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Gain/Loss</p>
-                <div className="flex items-center">
-                  <p className={`text-xl font-bold ${totalGain >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ${totalGain.toFixed(2)}
-                  </p>
-                  <p className={`ml-2 ${totalGain >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                    ({totalGain >= 0 ? '+' : ''}{totalGainPercent.toFixed(2)}%)
-                  </p>
-                </div>
-              </div>
+        {/* Asset List */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Portfolio Holdings</h2>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-1" />
+                Export
+              </Button>
+              <Button size="sm">
+                <PlusCircle className="h-4 w-4 mr-1" />
+                Add Asset
+              </Button>
             </div>
-            
-            <div className="mt-6 h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Value']} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
+          </div>
+          
+          {/* Category Filters */}
+          <div className="flex gap-2 flex-wrap">
+            <Badge 
+              variant={selectedCategory === 'all' ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory('all')}
+            >
+              All Assets ({assets.length})
+            </Badge>
+            <Badge 
+              variant={selectedCategory === 'treasury' ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory('treasury')}
+            >
+              Treasuries ({getAssetsByCategory('treasury').length})
+            </Badge>
+            <Badge 
+              variant={selectedCategory === 'private-credit' ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory('private-credit')}
+            >
+              Private Credit ({getAssetsByCategory('private-credit').length})
+            </Badge>
+            <Badge 
+              variant={selectedCategory === 'real-estate' ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory('real-estate')}
+            >
+              Real Estate ({getAssetsByCategory('real-estate').length})
+            </Badge>
+            <Badge 
+              variant={selectedCategory === 'commodity' ? 'default' : 'outline'}
+              className="cursor-pointer"
+              onClick={() => setSelectedCategory('commodity')}
+            >
+              Commodities ({getAssetsByCategory('commodity').length})
+            </Badge>
+          </div>
+          
+          {/* Asset Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredAssets.map((asset) => (
+              <RWAAssetCard key={asset.id} asset={asset} />
+            ))}
           </div>
         </div>
-        
-        <div className="lg:col-span-2">
-          <div className="bg-card rounded-lg p-6 shadow">
-            <h2 className="text-xl font-semibold mb-4">Holdings</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2 px-4">Symbol</th>
-                    <th className="text-left py-2 px-4">Name</th>
-                    <th className="text-right py-2 px-4">Shares</th>
-                    <th className="text-right py-2 px-4">Price</th>
-                    <th className="text-right py-2 px-4">Value</th>
-                    <th className="text-right py-2 px-4">Gain/Loss</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {portfolioItems.map((item) => (
-                    <tr key={item.symbol} className="border-b">
-                      <td className="py-3 px-4 font-medium">{item.symbol}</td>
-                      <td className="py-3 px-4">{item.name}</td>
-                      <td className="py-3 px-4 text-right">{item.shares}</td>
-                      <td className="py-3 px-4 text-right">${item.currentPrice.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right">${item.currentValue.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right">
-                        <div className={item.gain >= 0 ? 'text-green-500' : 'text-red-500'}>
-                          ${item.gain.toFixed(2)} ({item.gain >= 0 ? '+' : ''}{item.gainPercent.toFixed(2)}%)
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* Allocation Chart */}
+          <AssetAllocationChart 
+            data={allocationData}
+            title="Asset Allocation"
+          />
+          
+          {/* Top Performers */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Top Performers</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {topPerformers.map((asset) => (
+                <div key={asset.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{asset.symbol}</p>
+                    <p className="text-xs text-muted-foreground">{asset.issuer}</p>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-1 text-success">
+                      <TrendingUp className="h-3 w-3" />
+                      <span className="text-sm font-medium">
+                        +{asset.changePercent.toFixed(2)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          
+          {/* High Yield Assets */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Highest Yields</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {topYieldAssets.map((asset) => (
+                <div key={asset.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{asset.symbol}</p>
+                    <p className="text-xs text-muted-foreground">{asset.category.replace('-', ' ')}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-primary">{asset.yield.toFixed(2)}%</p>
+                    <p className="text-xs text-muted-foreground">APY</p>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+          
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <Button variant="outline" className="w-full justify-start">
+                <Activity className="h-4 w-4 mr-2" />
+                Rebalance Portfolio
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Shield className="h-4 w-4 mr-2" />
+                Risk Assessment
+              </Button>
+              <Button variant="outline" className="w-full justify-start">
+                <Settings className="h-4 w-4 mr-2" />
+                Portfolio Settings
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </PageLayout>
