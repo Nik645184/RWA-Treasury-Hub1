@@ -31,22 +31,22 @@ export function Sidebar({ isCollapsed, onToggle, className }: SidebarProps) {
       href: '/',
     },
     {
-      title: 'Stocks',
+      title: 'Tokenized Assets',
       icon: BarChart,
-      href: '/stocks',
+      href: '/assets',
     },
     {
-      title: 'Markets',
+      title: 'RWA Markets',
       icon: BarChart3,
       href: '/markets',
     },
     {
-      title: 'Currencies',
+      title: 'Digital Currencies',
       icon: DollarSign,
       href: '/currencies',
     },
     {
-      title: 'Global',
+      title: 'Global Overview',
       icon: Globe,
       href: '/global',
     },
