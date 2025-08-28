@@ -23,6 +23,7 @@ import {
   Link,
   ExternalLink,
   Activity,
+  LogOut,
 } from 'lucide-react';
 
 // Chain configurations
@@ -139,6 +140,42 @@ const CircleGatewayLive = () => {
 
   return (
     <div className="w-full space-y-6">
+      {/* Header with wallet status and disconnect */}
+      {isConnected && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                  <span className="font-medium">Wallet Connected</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Address:</span>
+                  <code className="text-sm bg-muted px-2 py-1 rounded">{formatAddress(address!)}</code>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Network:</span>
+                  <Badge variant={currentChain ? "default" : "destructive"}>
+                    {currentChain?.name || `Chain ID: ${chainId}`}
+                  </Badge>
+                </div>
+              </div>
+              
+              <Button
+                onClick={() => disconnect()}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Disconnect
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Wallet Connection */}
       <Card>
         <CardHeader>
@@ -229,16 +266,12 @@ const CircleGatewayLive = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Connected Account</p>
-                  <p className="font-mono font-medium">{formatAddress(address!)}</p>
-                </div>
-                <div className="text-right space-y-1">
-                  <p className="text-sm text-muted-foreground">Network</p>
-                  <Badge variant="secondary">{currentChain?.name || 'Unknown'}</Badge>
-                </div>
-              </div>
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Wallet successfully connected! You can now deposit USDC to Gateway or transfer between chains.
+                </AlertDescription>
+              </Alert>
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-muted rounded-lg">
@@ -250,14 +283,6 @@ const CircleGatewayLive = () => {
                   <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
                 </div>
               </div>
-
-              <Button
-                onClick={() => disconnect()}
-                variant="outline"
-                className="w-full"
-              >
-                Disconnect Wallet
-              </Button>
             </div>
           )}
         </CardContent>

@@ -1,3 +1,4 @@
+
 import { createConfig, http } from 'wagmi';
 import { baseSepolia, arbitrumSepolia, avalancheFuji, sepolia } from 'wagmi/chains';
 import { walletConnect, injected } from 'wagmi/connectors';
@@ -24,10 +25,10 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [baseSepolia.id]: http(),
-    [arbitrumSepolia.id]: http(),
-    [avalancheFuji.id]: http(),
-    [sepolia.id]: http(),
+    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [arbitrumSepolia.id]: http('https://sepolia-rollup.arbitrum.io/rpc'),
+    [avalancheFuji.id]: http('https://api.avax-test.network/ext/bc/C/rpc'),
+    [sepolia.id]: http('https://ethereum-sepolia-rpc.publicnode.com'),
   },
   ssr: false,
 });
