@@ -151,15 +151,29 @@ export function useCircleGateway() {
     }
 
     setIsProcessing(true);
-    const toastId = toast.loading('Step 1/4: Creating burn intent...');
+    const toastId = toast.loading('Checking Gateway balance...');
 
     try {
+      // First check if we have sufficient balance
+      const balances = await gatewayClient.balances('USDC', address);
+      const sourceBalance = balances.balances.find(b => b.domain === sourceDomain);
+      const requiredAmount = parseFloat(amount) + 0.01; // Add fee buffer
+      
+      if (!sourceBalance || parseFloat(sourceBalance.balance) < requiredAmount) {
+        const availableBalance = sourceBalance ? sourceBalance.balance : '0';
+        throw new Error(
+          `Insufficient Gateway balance. Available: ${availableBalance} USDC, Required: ${requiredAmount} USDC. ` +
+          `Please wait for block finality (up to 20 minutes on Ethereum) or deposit more USDC.`
+        );
+      }
+
       const destUsdcAddress = getUsdcAddress(destinationChainId);
       if (!destUsdcAddress) {
         throw new Error('USDC not supported on destination chain');
       }
 
       // Step 1: Create burn intent
+      toast.loading('Step 1/4: Creating burn intent...', { id: toastId });
       const burnIntent = createBurnIntent({
         sourceDomain,
         destinationDomain,
@@ -241,12 +255,12 @@ export function useCircleGateway() {
       return true;
     } catch (error: any) {
       console.error('Transfer error:', error);
-      toast.error(error?.shortMessage || error?.message || 'Transfer failed', { id: toastId });
-      throw error;
+      toast.error(error?.message || 'Transfer failed', { id: toastId });
+      return false;
     } finally {
       setIsProcessing(false);
     }
-  }, [address, walletClient, chain, usdcAddress, switchChain, publicClient, gatewayWalletAddress, gatewayMinterAddress]);
+  }, [address, walletClient, chain, usdcAddress, switchChain, publicClient, gatewayWalletAddress, gatewayMinterAddress, gatewayClient]);
 
   // Get unified balance across all chains
   const getUnifiedBalance = useCallback(async () => {
