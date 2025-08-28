@@ -11,8 +11,8 @@ export interface BalanceResponse {
 
 export interface TransferRequest {
   burnIntent?: {
-    maxBlockHeight: string;
-    maxFee: string;
+    maxBlockHeight: string | bigint;
+    maxFee: string | bigint;
     spec: TransferSpec;
   };
   signature: string;
