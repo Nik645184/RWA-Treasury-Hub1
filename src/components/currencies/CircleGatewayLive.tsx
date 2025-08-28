@@ -156,9 +156,28 @@ const CircleGatewayLive = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Network:</span>
-                  <Badge variant={currentChain ? "default" : "destructive"}>
-                    {currentChain?.name || `Chain ID: ${chainId}`}
-                  </Badge>
+                  <Select 
+                    value={chainId?.toString()} 
+                    onValueChange={(value) => switchChain?.({ chainId: Number(value) })}
+                  >
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue>
+                        <Badge variant={currentChain ? "default" : "destructive"}>
+                          {currentChain?.name || `Chain ID: ${chainId}`}
+                        </Badge>
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {chains.map((chain) => (
+                        <SelectItem key={chain.id} value={chain.id.toString()}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${chain.color}`} />
+                            {chain.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               
