@@ -34,7 +34,7 @@ const chains = [
 
 const CircleGatewayLive = () => {
   const { address, isConnected } = useAccount();
-  const { connect, connectors } = useConnect();
+  const { connect, connectors, error: connectError, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
@@ -53,6 +53,13 @@ const CircleGatewayLive = () => {
   const [toChain, setToChain] = useState(421614); // Arbitrum Sepolia
   const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Connectors available:', connectors);
+    console.log('Is connected:', isConnected);
+    console.log('Connect error:', connectError);
+  }, [connectors, isConnected, connectError]);
+
   // Fetch unified balance when connected
   useEffect(() => {
     if (isConnected && address) {
@@ -63,6 +70,19 @@ const CircleGatewayLive = () => {
       });
     }
   }, [isConnected, address, getUnifiedBalance]);
+
+  const handleConnect = async () => {
+    try {
+      console.log('Attempting to connect with connector:', connectors[0]);
+      if (connectors[0]) {
+        await connect({ connector: connectors[0] });
+      } else {
+        console.error('No connectors available');
+      }
+    } catch (error) {
+      console.error('Connection error:', error);
+    }
+  };
 
   const handleDeposit = async () => {
     if (!amount) return;
@@ -107,14 +127,43 @@ const CircleGatewayLive = () => {
                   Make sure you have testnet USDC and native tokens for gas.
                 </AlertDescription>
               </Alert>
+              
+              {connectError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Error: {connectError.message}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <Button
-                onClick={() => connect({ connector: connectors[0] })}
+                onClick={handleConnect}
+                disabled={isPending || connectors.length === 0}
                 className="w-full"
                 size="lg"
               >
-                <Wallet className="mr-2 h-4 w-4" />
-                Connect MetaMask
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    {connectors.length === 0 ? 'No Wallet Detected' : 'Connect Wallet'}
+                  </>
+                )}
               </Button>
+              
+              {connectors.length === 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Please install MetaMask or another Web3 wallet to continue.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

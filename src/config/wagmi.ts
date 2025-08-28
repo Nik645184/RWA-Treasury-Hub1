@@ -5,9 +5,7 @@ import { injected } from 'wagmi/connectors';
 export const config = createConfig({
   chains: [baseSepolia, arbitrumSepolia, avalancheFuji, sepolia],
   connectors: [
-    injected({
-      target: 'metaMask',
-    }),
+    injected(), // Remove target specification to support all injected wallets
   ],
   transports: {
     [baseSepolia.id]: http('https://sepolia.base.org'),
