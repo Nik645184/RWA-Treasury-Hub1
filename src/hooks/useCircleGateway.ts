@@ -68,14 +68,18 @@ export function useCircleGateway() {
 
   // Fetch unified balances on address change
   useEffect(() => {
-    if (address) {
-      getUnifiedBalance().then(balances => {
+    const fetchBalances = async () => {
+      if (address) {
+        const balances = await getUnifiedBalance();
         if (balances) {
+          console.log('Fetched Gateway balances:', balances);
           setUnifiedBalances(balances);
         }
-      });
-    }
-  }, [address]);
+      }
+    };
+    
+    fetchBalances();
+  }, [address, chain?.id]);
 
   // Real deposit to Gateway
   const depositToGateway = useCallback(async (amount: string) => {
@@ -154,15 +158,32 @@ export function useCircleGateway() {
     const toastId = toast.loading('Checking Gateway balance...');
 
     try {
+      // Log detailed balance check
+      console.log('Checking balance for transfer:', {
+        address,
+        sourceDomain,
+        amount,
+        isMainnet,
+        gatewayEndpoint: isMainnet ? 'mainnet' : 'testnet'
+      });
+      
       // First check if we have sufficient balance
       const balances = await gatewayClient.balances('USDC', address);
+      console.log('Gateway balances response:', balances);
+      
       const sourceBalance = balances.balances.find(b => b.domain === sourceDomain);
       const requiredAmount = parseFloat(amount) + 0.01; // Add fee buffer
+      
+      console.log('Balance check:', {
+        sourceBalance,
+        requiredAmount,
+        hasBalance: sourceBalance && parseFloat(sourceBalance.balance) >= requiredAmount
+      });
       
       if (!sourceBalance || parseFloat(sourceBalance.balance) < requiredAmount) {
         const availableBalance = sourceBalance ? sourceBalance.balance : '0';
         throw new Error(
-          `Insufficient Gateway balance. Available: ${availableBalance} USDC, Required: ${requiredAmount} USDC. ` +
+          `Insufficient Gateway balance on domain ${sourceDomain}. Available: ${availableBalance} USDC, Required: ${requiredAmount} USDC. ` +
           `Please wait for block finality (up to 20 minutes on Ethereum) or deposit more USDC.`
         );
       }

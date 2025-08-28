@@ -137,10 +137,27 @@ const CircleGatewayLive = () => {
 
   const handleTransfer = async () => {
     if (!amount) return;
-    const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
+    
+    // Get the actual source domain based on current chain
+    const currentChainDomain = chains.find(c => c.id === chainId)?.domain;
     const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-    // Pass the destination chain ID as the 4th parameter
-    await transferCrossChain(amount, fromDomain, toDomain, toChain);
+    
+    if (currentChainDomain === undefined) {
+      alert('Please switch to a supported network');
+      return;
+    }
+    
+    console.log('Transfer details:', {
+      amount,
+      fromChain: chainId,
+      fromDomain: currentChainDomain,
+      toChain,
+      toDomain,
+      unifiedBalances
+    });
+    
+    // Use the current chain's domain as source
+    await transferCrossChain(amount, currentChainDomain, toDomain, toChain);
     setAmount('');
   };
 
