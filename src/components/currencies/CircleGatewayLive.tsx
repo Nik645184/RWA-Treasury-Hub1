@@ -73,11 +73,20 @@ const CircleGatewayLive = () => {
 
   const handleConnect = async () => {
     try {
-      console.log('Attempting to connect with connector:', connectors[0]);
-      if (connectors[0]) {
-        await connect({ connector: connectors[0] });
+      console.log('Available connectors:', connectors);
+      const injectedConnector = connectors.find(c => c.id === 'injected' || c.name === 'Injected');
+      
+      if (!window.ethereum) {
+        alert('Please install MetaMask or another Web3 wallet!');
+        window.open('https://metamask.io/download/', '_blank');
+        return;
+      }
+      
+      if (injectedConnector) {
+        console.log('Connecting with:', injectedConnector);
+        await connect({ connector: injectedConnector });
       } else {
-        console.error('No connectors available');
+        console.error('No injected connector found');
       }
     } catch (error) {
       console.error('Connection error:', error);
@@ -139,7 +148,7 @@ const CircleGatewayLive = () => {
               
               <Button
                 onClick={handleConnect}
-                disabled={isPending || connectors.length === 0}
+                disabled={isPending}
                 className="w-full"
                 size="lg"
               >
@@ -151,16 +160,24 @@ const CircleGatewayLive = () => {
                 ) : (
                   <>
                     <Wallet className="mr-2 h-4 w-4" />
-                    {connectors.length === 0 ? 'No Wallet Detected' : 'Connect Wallet'}
+                    Connect Wallet
                   </>
                 )}
               </Button>
               
-              {connectors.length === 0 && (
+              {!window.ethereum && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    Please install MetaMask or another Web3 wallet to continue.
+                    MetaMask not detected. 
+                    <a 
+                      href="https://metamask.io/download/" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="underline ml-1"
+                    >
+                      Install MetaMask
+                    </a>
                   </AlertDescription>
                 </Alert>
               )}
