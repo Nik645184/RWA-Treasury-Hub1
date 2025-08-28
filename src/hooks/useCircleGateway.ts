@@ -117,6 +117,8 @@ export function useCircleGateway() {
       toast.loading('Waiting for deposit confirmation...', { id: toastId });
       await publicClient?.waitForTransactionReceipt({ hash: depositTx });
       
+      // Clear processing state immediately after success
+      setIsProcessing(false);
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
@@ -130,10 +132,9 @@ export function useCircleGateway() {
       return true;
     } catch (error: any) {
       console.error('Deposit error:', error);
-      toast.error(error?.shortMessage || error?.message || 'Deposit failed', { id: toastId });
-      throw error;
-    } finally {
       setIsProcessing(false);
+      toast.error(error?.shortMessage || error?.message || 'Deposit failed', { id: toastId });
+      return false;
     }
   }, [address, chain, usdcAddress, walletClient, publicClient, gatewayWalletAddress]);
 
