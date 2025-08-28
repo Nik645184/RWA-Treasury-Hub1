@@ -1,5 +1,4 @@
-import { pad, zeroAddress, maxUint256, type Address } from 'viem';
-import { randomBytes } from 'crypto';
+import { pad, zeroAddress, maxUint256, parseUnits, type Address } from 'viem';
 
 const domain = { name: 'GatewayWallet', version: '1' };
 
@@ -51,7 +50,8 @@ export interface BurnIntentParams {
   destinationToken: string;
   sourceDepositor: string;
   destinationRecipient: string;
-  amount: bigint;
+  amount: string; // Changed to string to accept decimal input
+  sourceSigner?: string;
 }
 
 export function createBurnIntent({
@@ -64,6 +64,7 @@ export function createBurnIntent({
   sourceDepositor,
   destinationRecipient,
   amount,
+  sourceSigner,
 }: BurnIntentParams) {
   return {
     maxBlockHeight: maxUint256,
@@ -78,9 +79,9 @@ export function createBurnIntent({
       destinationToken,
       sourceDepositor,
       destinationRecipient,
-      sourceSigner: sourceDepositor,
+      sourceSigner: sourceSigner || sourceDepositor,
       destinationCaller: zeroAddress,
-      value: amount,
+      value: parseUnits(amount, 6), // Convert amount to bigint with 6 decimals
       salt: generateSalt(),
       hookData: '0x' as `0x${string}`,
     },
