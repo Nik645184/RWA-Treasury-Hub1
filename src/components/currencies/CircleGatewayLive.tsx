@@ -32,8 +32,6 @@ const chains = [
   { id: 421614, name: 'Arbitrum Sepolia', domain: 3, color: 'bg-orange-500' },
   { id: 43113, name: 'Avalanche Fuji', domain: 1, color: 'bg-red-500' },
   { id: 11155111, name: 'Ethereum Sepolia', domain: 0, color: 'bg-indigo-500' },
-  { id: 12345, name: 'Ethereum MyNet', domain: 10, color: 'bg-purple-500' }, // Custom Ethereum MyNet
-  { id: 12346, name: 'Base MyNet', domain: 11, color: 'bg-cyan-500' }, // Custom Base MyNet
 ];
 
 const CircleGatewayLive = () => {
