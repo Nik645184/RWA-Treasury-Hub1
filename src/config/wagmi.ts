@@ -5,8 +5,9 @@ import { injected, walletConnect } from 'wagmi/connectors';
 // Configure chains
 const chains = [baseSepolia, arbitrumSepolia, avalancheFuji, sepolia] as const;
 
-// WalletConnect Project ID - using a generic one for testing
-const projectId = '3fcc6bba6f1de962d911bb5b5c3dba68';
+// WalletConnect Project ID - You should get your own at https://cloud.walletconnect.com
+// This is a public demo ID that may have limitations
+const projectId = '2c25e0a1d9912b35459c32fa14f1e7ad';
 
 export const config = createConfig({
   chains,
@@ -15,11 +16,14 @@ export const config = createConfig({
     walletConnect({
       projectId,
       showQrModal: true,
+      qrModalOptions: {
+        themeMode: 'light',
+      },
       metadata: {
-        name: 'Circle Gateway',
+        name: 'Circle Gateway Demo',
         description: 'USDC Cross-chain Management',
-        url: 'https://gateway.circle.com',
-        icons: ['https://gateway.circle.com/icon.png'],
+        url: window?.location?.origin || 'https://example.com',
+        icons: ['https://avatars.githubusercontent.com/u/37784886'],
       },
     }),
   ],

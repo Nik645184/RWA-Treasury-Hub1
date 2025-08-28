@@ -75,29 +75,44 @@ const CircleGatewayLive = () => {
     try {
       console.log('Available connectors:', connectors);
       
-      // If on mobile or WalletConnect specifically requested
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect');
-      const injectedConnector = connectors.find(c => c.id === 'injected');
+      // Find specific connectors
+      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect' || c.id === 'com.walletconnect');
+      const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'com.injected');
       
       let selectedConnector;
       
-      if (connectorId === 'walletConnect' || (isMobile && walletConnectConnector)) {
+      // If WalletConnect specifically requested or on mobile without injected wallet
+      if (connectorId === 'walletConnect') {
         selectedConnector = walletConnectConnector;
+        if (!selectedConnector) {
+          alert('WalletConnect is not available. Please try refreshing the page.');
+          return;
+        }
       } else if (window.ethereum && injectedConnector) {
         selectedConnector = injectedConnector;
       } else if (walletConnectConnector) {
+        // Fallback to WalletConnect if no injected wallet
         selectedConnector = walletConnectConnector;
       }
       
       if (selectedConnector) {
-        console.log('Connecting with:', selectedConnector);
+        console.log('Connecting with:', selectedConnector.id, selectedConnector.name);
         await connect({ connector: selectedConnector });
       } else {
         console.error('No suitable connector found');
+        alert('No wallet connector available. Please install MetaMask or use WalletConnect.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Connection error:', error);
+      
+      // Handle specific error cases
+      if (error?.message?.includes('User rejected')) {
+        console.log('User cancelled connection');
+      } else if (error?.message?.includes('WalletConnect')) {
+        alert('WalletConnect error. Please try again or use MetaMask.');
+      } else {
+        alert(`Connection failed: ${error?.message || 'Unknown error'}`);
+      }
     }
   };
 
