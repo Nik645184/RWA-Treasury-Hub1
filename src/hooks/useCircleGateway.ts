@@ -268,6 +268,7 @@ export function useCircleGateway() {
 
     try {
       const response = await gatewayClient.balances('USDC', address);
+      console.log('Unified balances fetched:', response);
       return response.balances;
     } catch (error) {
       console.error('Failed to fetch unified balance:', error);
@@ -280,6 +281,7 @@ export function useCircleGateway() {
     chain,
     usdcBalance: usdcBalance ? formatUnits(usdcBalance, 6) : '0',
     gatewayBalance: gatewayBalance ? formatUnits(gatewayBalance, 6) : '0',
+    unifiedBalances,
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,

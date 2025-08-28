@@ -68,14 +68,21 @@ const CircleGatewayLive = () => {
 
   // Fetch unified balance when connected
   useEffect(() => {
-    if (isConnected && address) {
-      getUnifiedBalance().then(balances => {
+    const fetchBalances = async () => {
+      if (isConnected && address) {
+        const balances = await getUnifiedBalance();
         if (balances) {
+          console.log('Fetched unified balances:', balances);
           setUnifiedBalances(balances);
         }
-      });
-    }
-  }, [isConnected, address, getUnifiedBalance]);
+      }
+    };
+    
+    fetchBalances();
+    // Refresh every 15 seconds
+    const interval = setInterval(fetchBalances, 15000);
+    return () => clearInterval(interval);
+  }, [isConnected, address, getUnifiedBalance, chainId]);
 
   const handleConnect = async (connectorId?: string) => {
     try {

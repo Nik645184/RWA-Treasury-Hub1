@@ -73,8 +73,12 @@ export class GatewayClient {
   // Check balances for a given depositor
   async balances(token: string, depositor: string, domains?: number[]): Promise<BalanceResponse> {
     if (!domains) {
-      // Only include supported domains (not Arbitrum for testnet)
-      domains = [0, 1, 6]; // Ethereum, Avalanche, Base
+      // Include all supported domains based on environment
+      if (this.apiUrl.includes('testnet')) {
+        domains = [0, 1, 6]; // Ethereum Sepolia, Avalanche Fuji, Base Sepolia
+      } else {
+        domains = [0, 1, 2, 3, 6, 7, 10]; // All mainnet supported domains
+      }
     }
     
     const response = await fetch(`${this.apiUrl}/balances`, {
