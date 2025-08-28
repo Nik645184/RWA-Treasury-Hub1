@@ -24,6 +24,7 @@ import {
   ExternalLink,
   Activity,
   LogOut,
+  Info,
 } from 'lucide-react';
 
 // Chain configurations
@@ -321,15 +322,34 @@ const CircleGatewayLive = () => {
                 </AlertDescription>
               </Alert>
               
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
-                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Wallet className="h-3 w-3" />
+                      Wallet USDC (not deposited)
+                    </p>
+                    <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
+                    <p className="text-xs text-muted-foreground mt-1">Available to deposit</p>
+                  </div>
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      Gateway Balance
+                    </p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
+                    <p className="text-xs text-muted-foreground mt-1">Ready for cross-chain</p>
+                  </div>
                 </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance</p>
-                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
-                </div>
+                
+                {parseFloat(usdcBalance) > 0 && parseFloat(gatewayBalance) === 0 && (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Note:</strong> Your wallet contains {parseFloat(usdcBalance).toFixed(2)} USDC, but you need to deposit them to Gateway first to enable cross-chain transfers.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
           )}
