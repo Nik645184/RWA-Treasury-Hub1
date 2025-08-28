@@ -71,22 +71,30 @@ const CircleGatewayLive = () => {
     }
   }, [isConnected, address, getUnifiedBalance]);
 
-  const handleConnect = async () => {
+  const handleConnect = async (connectorId?: string) => {
     try {
       console.log('Available connectors:', connectors);
-      const injectedConnector = connectors.find(c => c.id === 'injected' || c.name === 'Injected');
       
-      if (!window.ethereum) {
-        alert('Please install MetaMask or another Web3 wallet!');
-        window.open('https://metamask.io/download/', '_blank');
-        return;
+      // If on mobile or WalletConnect specifically requested
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect');
+      const injectedConnector = connectors.find(c => c.id === 'injected');
+      
+      let selectedConnector;
+      
+      if (connectorId === 'walletConnect' || (isMobile && walletConnectConnector)) {
+        selectedConnector = walletConnectConnector;
+      } else if (window.ethereum && injectedConnector) {
+        selectedConnector = injectedConnector;
+      } else if (walletConnectConnector) {
+        selectedConnector = walletConnectConnector;
       }
       
-      if (injectedConnector) {
-        console.log('Connecting with:', injectedConnector);
-        await connect({ connector: injectedConnector });
+      if (selectedConnector) {
+        console.log('Connecting with:', selectedConnector);
+        await connect({ connector: selectedConnector });
       } else {
-        console.error('No injected connector found');
+        console.error('No suitable connector found');
       }
     } catch (error) {
       console.error('Connection error:', error);
@@ -146,38 +154,49 @@ const CircleGatewayLive = () => {
                 </Alert>
               )}
               
-              <Button
-                onClick={handleConnect}
-                disabled={isPending}
-                className="w-full"
-                size="lg"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Connecting...
-                  </>
-                ) : (
-                  <>
-                    <Wallet className="mr-2 h-4 w-4" />
-                    Connect Wallet
-                  </>
-                )}
-              </Button>
+              <div className="space-y-3">
+                <Button
+                  onClick={() => handleConnect()}
+                  disabled={isPending}
+                  className="w-full"
+                  size="lg"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Wallet className="mr-2 h-4 w-4" />
+                      {window.ethereum ? 'Connect MetaMask' : 'Connect Wallet'}
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => handleConnect('walletConnect')}
+                  disabled={isPending}
+                  variant="outline"
+                  className="w-full"
+                  size="lg"
+                >
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 300 185" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M61.4385 36.2562C95.2994 2.39582 149.849 2.39582 183.71 36.2562L187.854 40.4002C189.8 42.3462 189.8 45.5332 187.854 47.4792L174.066 61.2672C173.093 62.2402 171.5 62.2402 170.527 61.2672L164.727 55.4672C143.215 33.9552 108.933 33.9552 87.4211 55.4672L81.1671 61.7212C80.1941 62.6942 78.6011 62.6942 77.6281 61.7212L63.8401 47.9332C61.8941 45.9872 61.8941 42.8002 63.8401 40.8542L61.4385 36.2562ZM212.246 64.7922L224.534 77.0802C226.48 79.0262 226.48 82.2132 224.534 84.1592L171.16 137.533C169.214 139.479 166.027 139.479 164.081 137.533L126.869 100.321C125.896 99.3482 124.303 99.3482 123.33 100.321L86.1181 137.533C84.1721 139.479 80.9851 139.479 79.0391 137.533L25.6651 84.1592C23.7191 82.2132 23.7191 79.0262 25.6651 77.0802L37.9531 64.7922C39.8991 62.8462 43.0861 62.8462 45.0321 64.7922L82.2441 101.904C83.2171 102.877 84.8101 102.877 85.7831 101.904L122.995 64.6922C124.941 62.7462 128.128 62.7462 130.074 64.6922L167.286 101.904C168.259 102.877 169.852 102.877 170.825 101.904L208.037 64.7922C209.983 62.8462 213.17 62.8462 215.116 64.7922L212.246 64.7922Z" fill="currentColor"/>
+                  </svg>
+                  Connect with Mobile Wallet
+                </Button>
+              </div>
               
               {!window.ethereum && (
                 <Alert>
                   <AlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    MetaMask not detected. 
-                    <a 
-                      href="https://metamask.io/download/" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="underline ml-1"
-                    >
-                      Install MetaMask
-                    </a>
+                    Desktop wallet not detected. You can connect using:
+                    <ul className="mt-2 space-y-1">
+                      <li>• WalletConnect with your mobile wallet</li>
+                      <li>• <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="underline">Install MetaMask extension</a></li>
+                    </ul>
                   </AlertDescription>
                 </Alert>
               )}
