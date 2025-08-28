@@ -1,4 +1,8 @@
-import { GATEWAY_API_BASE_URL, CHAIN_NAMES } from './constants';
+import { 
+  GATEWAY_API_BASE_URL_MAINNET, 
+  GATEWAY_API_BASE_URL_TESTNET, 
+  CHAIN_NAMES 
+} from './constants';
 
 export interface BalanceResponse {
   token: string;
@@ -54,19 +58,26 @@ export interface TransferResponse {
 }
 
 export class GatewayClient {
+  private apiUrl: string;
+  
+  constructor(isMainnet: boolean = false) {
+    this.apiUrl = isMainnet ? GATEWAY_API_BASE_URL_MAINNET : GATEWAY_API_BASE_URL_TESTNET;
+  }
+  
   // Get Gateway info
   async info() {
-    const response = await fetch(`${GATEWAY_API_BASE_URL}/info`);
+    const response = await fetch(`${this.apiUrl}/info`);
     return response.json();
   }
 
   // Check balances for a given depositor
   async balances(token: string, depositor: string, domains?: number[]): Promise<BalanceResponse> {
     if (!domains) {
-      domains = Object.keys(CHAIN_NAMES).map((d) => parseInt(d));
+      // Only include supported domains (not Arbitrum for testnet)
+      domains = [0, 1, 6]; // Ethereum, Avalanche, Base
     }
     
-    const response = await fetch(`${GATEWAY_API_BASE_URL}/balances`, {
+    const response = await fetch(`${this.apiUrl}/balances`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -80,7 +91,7 @@ export class GatewayClient {
 
   // Request transfer attestation
   async transfer(request: TransferRequest | TransferRequest[]): Promise<TransferResponse> {
-    const response = await fetch(`${GATEWAY_API_BASE_URL}/transfer`, {
+    const response = await fetch(`${this.apiUrl}/transfer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request, (_key, value) =>
