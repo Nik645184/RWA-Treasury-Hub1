@@ -28,6 +28,10 @@ import {
 
 // Chain configurations
 const chains = [
+  // Mainnet chains
+  { id: 1, name: 'Ethereum', domain: 0, color: 'bg-indigo-500', isMainnet: true },
+  { id: 8453, name: 'Base', domain: 6, color: 'bg-blue-500', isMainnet: true },
+  // Testnet chains
   { id: 84532, name: 'Base Sepolia', domain: 6, color: 'bg-blue-500' },
   { id: 421614, name: 'Arbitrum Sepolia', domain: 3, color: 'bg-orange-500' },
   { id: 43113, name: 'Avalanche Fuji', domain: 1, color: 'bg-red-500' },
