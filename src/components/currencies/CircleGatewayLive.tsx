@@ -271,6 +271,12 @@ const CircleGatewayLive = () => {
                   {unifiedBalances.map((balance) => {
                     const chain = chains.find(c => c.domain === balance.domain);
                     const isCurrentChain = chain && currentChain && chain.domain === currentChain.domain;
+                    
+                    // Use fresh contract data for current chain, API data for others
+                    const displayBalance = isCurrentChain && gatewayBalance 
+                      ? parseFloat(gatewayBalance).toFixed(6)
+                      : parseFloat(balance.balance).toFixed(6);
+                    
                     return (
                       <div key={balance.domain} className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
@@ -282,7 +288,7 @@ const CircleGatewayLive = () => {
                             )}
                           </span>
                         </div>
-                        <span className="text-sm font-mono">{parseFloat(balance.balance).toFixed(6)} USDC</span>
+                        <span className="text-sm font-mono">{displayBalance} USDC</span>
                       </div>
                     );
                   })}
@@ -585,16 +591,26 @@ const CircleGatewayLive = () => {
                   {unifiedBalances.length > 0 ? (
                     unifiedBalances.map((balance, idx) => {
                       const chain = chains.find(c => c.domain === balance.domain);
+                      const isCurrentChain = chain && currentChain && chain.domain === currentChain.domain;
+                      
+                      // Use fresh contract data for current chain, API data for others
+                      const displayBalance = isCurrentChain && gatewayBalance 
+                        ? gatewayBalance
+                        : balance.balance;
+                      
                       return (
                         <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                           <div className="flex items-center gap-3">
                             <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
                             <span className="font-medium">
                               {chain?.name || `Domain ${balance.domain}`}
+                              {isCurrentChain && (
+                                <Badge variant="secondary" className="ml-2 text-xs">Live</Badge>
+                              )}
                             </span>
                           </div>
                           <span className="font-mono font-bold">
-                            {balance.balance} USDC
+                            {displayBalance} USDC
                           </span>
                         </div>
                       );
