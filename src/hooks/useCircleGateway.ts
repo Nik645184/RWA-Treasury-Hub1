@@ -127,12 +127,38 @@ export function useCircleGateway() {
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
-      // Refresh balances after a delay (for chain finality)
-      setTimeout(() => {
-        getUnifiedBalance().then(balances => {
-          if (balances) setUnifiedBalances(balances);
-        });
-      }, 5000);
+      // Immediately try to refresh balances
+      toast.loading('Updating balances...', { id: 'balance-refresh' });
+      
+      // First quick check
+      const quickCheck = await getUnifiedBalance();
+      if (quickCheck) {
+        setUnifiedBalances(quickCheck);
+        toast.dismiss('balance-refresh');
+      }
+      
+      // Schedule additional checks for finality
+      const checkIntervals = [3000, 10000, 30000]; // 3s, 10s, 30s
+      checkIntervals.forEach(delay => {
+        setTimeout(async () => {
+          const balances = await getUnifiedBalance();
+          if (balances) {
+            setUnifiedBalances(balances);
+            
+            // Check if deposit is now visible
+            const totalBalance = balances.reduce((sum: number, b: any) => 
+              sum + parseFloat(b.balance || '0'), 0
+            );
+            
+            if (totalBalance > 0) {
+              toast.success(`Balance updated: ${totalBalance.toFixed(2)} USDC`, { 
+                id: 'balance-refresh',
+                duration: 3000 
+              });
+            }
+          }
+        }, delay);
+      });
       
       return true;
     } catch (error: any) {
@@ -269,17 +295,22 @@ export function useCircleGateway() {
       
       toast.success(`Successfully transferred ${amount} USDC cross-chain!`, { id: toastId });
       
+      // Immediately refresh balances  
+      const quickCheck = await getUnifiedBalance();
+      if (quickCheck) {
+        setUnifiedBalances(quickCheck);
+      }
+      
+      // Schedule additional checks for finality
+      [5000, 15000, 30000].forEach(delay => {
+        setTimeout(async () => {
+          const balances = await getUnifiedBalance();
+          if (balances) setUnifiedBalances(balances);
+        }, delay);
+      });
+      
       // Return the mint transaction hash
       return mintTx;
-      
-      // Refresh balances
-      setTimeout(() => {
-        getUnifiedBalance().then(balances => {
-          if (balances) setUnifiedBalances(balances);
-        });
-      }, 5000);
-      
-      return true;
     } catch (error: any) {
       console.error('Transfer error:', error);
       toast.error(error?.message || 'Transfer failed', { id: toastId });

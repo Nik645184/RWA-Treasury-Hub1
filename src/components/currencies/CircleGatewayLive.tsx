@@ -65,6 +65,7 @@ const CircleGatewayLive = () => {
     transferCrossChain,
     getUnifiedBalance,
     isProcessing,
+    unifiedBalances: hookBalances, // Get balances from hook
   } = useCircleGateway();
 
   const [amount, setAmount] = useState('');
@@ -107,6 +108,14 @@ const CircleGatewayLive = () => {
   const [lastRebalanceCheck, setLastRebalanceCheck] = useState<Date | null>(null);
   const [isExecutingHook, setIsExecutingHook] = useState(false);
 
+  // Sync balances from hook when they update
+  useEffect(() => {
+    if (hookBalances && hookBalances.length > 0) {
+      setUnifiedBalances(hookBalances);
+      setLastRefreshTime(new Date());
+    }
+  }, [hookBalances]);
+
   // Fetch unified balance when connected
   useEffect(() => {
     if (!isConnected || !address) return;
@@ -130,9 +139,9 @@ const CircleGatewayLive = () => {
     };
     
     fetchBalances();
-    const interval = setInterval(fetchBalances, 60000); // Reduced to once per minute
+    const interval = setInterval(fetchBalances, 60000); // Check every minute
     return () => clearInterval(interval);
-  }, [isConnected, address, chainId]); // Removed getUnifiedBalance and isExecutingHook from dependencies to prevent loops
+  }, [isConnected, address, chainId]);
 
   // Check hook conditions with debouncing
   const checkHookConditions = (balances: any[]) => {
