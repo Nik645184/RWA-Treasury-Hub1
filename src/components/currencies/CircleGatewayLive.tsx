@@ -226,6 +226,13 @@ const CircleGatewayLive = () => {
                   <p className="text-sm text-muted-foreground">
                     Instantly accessible across all supported chains
                   </p>
+                  {/* Debug info */}
+                  <div className="text-xs text-muted-foreground space-y-1 mt-2 p-2 bg-muted/50 rounded">
+                    <p>Connected to: {currentChain?.name || 'Unknown'} (ID: {chainId})</p>
+                    <p>Network Type: {currentChain?.isMainnet ? 'Mainnet' : 'Testnet'}</p>
+                    <p>Gateway Contract Balance: {gatewayBalance} USDC</p>
+                    <p>API Data Source: {currentChain?.isMainnet ? 'Mainnet API' : 'Testnet API'}</p>
+                  </div>
                 </div>
                 <div className="text-right space-y-2">
                   <Badge variant="outline" className="border-primary/20">
@@ -241,7 +248,7 @@ const CircleGatewayLive = () => {
               {/* Breakdown by chain */}
               {unifiedBalances && unifiedBalances.length > 0 && (
                 <div className="mt-4 pt-4 border-t space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution:</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution (from API):</p>
                   {unifiedBalances.map((balance) => {
                     const chain = chains.find(c => c.domain === balance.domain);
                     const isCurrentChain = chain && currentChain && chain.domain === currentChain.domain;
@@ -276,6 +283,14 @@ const CircleGatewayLive = () => {
                       <p className="text-xs text-muted-foreground mt-2">
                         Your USDC is stored in these non-custodial smart contracts across all supported chains.
                       </p>
+                      {currentChain?.isMainnet && unifiedBalances.some(b => parseFloat(b.balance) > 0) && (
+                        <Alert className="mt-2">
+                          <AlertCircle className="h-3 w-3" />
+                          <AlertDescription className="text-xs">
+                            Note: You're on mainnet but the API shows testnet balances. Make sure you're querying the correct network.
+                          </AlertDescription>
+                        </Alert>
+                      )}
                     </div>
                   </div>
                 </div>

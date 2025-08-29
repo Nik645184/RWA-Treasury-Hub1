@@ -274,12 +274,15 @@ export function useCircleGateway() {
 
     try {
       const response = await gatewayClient.balances('USDC', address);
+      console.log('Unified balances from API:', response.balances);
+      console.log('Current chain Gateway balance from contract:', gatewayBalance ? formatUnits(gatewayBalance, 6) : '0');
+      console.log('Current chain ID:', chain?.id, 'Is Mainnet:', isMainnet);
       return response.balances;
     } catch (error) {
       console.error('Failed to fetch unified balance:', error);
       return null;
     }
-  }, [address, gatewayClient]);
+  }, [address, gatewayClient, gatewayBalance, chain, isMainnet]);
 
   return {
     address,
