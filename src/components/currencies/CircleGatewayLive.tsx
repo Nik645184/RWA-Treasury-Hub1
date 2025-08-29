@@ -1062,24 +1062,63 @@ const CircleGatewayLive = () => {
                     </Button>
                   </div>
                   
+                  {/* Show pending deposits notice */}
+                  {unifiedBalances.some(b => b.domain === 6 && parseFloat(b.balance) === 0) && (
+                    <Alert className="mb-4 border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+                      <AlertCircle className="h-4 w-4 text-blue-600" />
+                      <AlertDescription>
+                        <p className="text-sm">
+                          Recent deposits require L1 finality. Base deposits: ~13-19 minutes for Ethereum L1 confirmation.
+                        </p>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
                   {unifiedBalances.length > 0 ? (
-                    unifiedBalances.map((balance, idx) => {
-                      const chain = chains.find(c => c.domain === balance.domain);
-                      const hasBalance = parseFloat(balance.balance) > 0;
-                      return (
-                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${hasBalance ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900' : 'bg-muted'}`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
-                            <span className="font-medium">
-                              {chain?.name || `Domain ${balance.domain}`}
-                            </span>
-                          </div>
-                          <span className={`font-mono font-bold ${hasBalance ? 'text-green-600 dark:text-green-400' : ''}`}>
-                            {balance.balance} USDC
+                    <div className="space-y-2">
+                      {/* Show total */}
+                      <div className="p-3 bg-primary/10 rounded-lg border border-primary/20 mb-3">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Total Gateway Balance</span>
+                          <span className="font-mono font-bold text-lg">
+                            {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
                           </span>
                         </div>
-                      );
-                    })
+                      </div>
+                      
+                      {/* Show breakdown by chain */}
+                      {unifiedBalances.map((balance, idx) => {
+                        const chain = chains.find(c => c.domain === balance.domain);
+                        const hasBalance = parseFloat(balance.balance) > 0;
+                        
+                        // Show pending indicator for Base if no balance yet
+                        const isPending = balance.domain === 6 && !hasBalance && address;
+                        
+                        return (
+                          <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${
+                            hasBalance ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900' : 
+                            isPending ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900' :
+                            'bg-muted'
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
+                              <span className="font-medium">
+                                {chain?.name || `Domain ${balance.domain}`}
+                              </span>
+                              {isPending && (
+                                <span className="text-xs text-amber-600 dark:text-amber-400">(Pending finality)</span>
+                              )}
+                            </div>
+                            <span className={`font-mono font-bold ${
+                              hasBalance ? 'text-green-600 dark:text-green-400' : 
+                              isPending ? 'text-amber-600 dark:text-amber-400' : ''
+                            }`}>
+                              {balance.balance} USDC
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />

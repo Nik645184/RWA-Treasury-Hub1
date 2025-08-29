@@ -67,20 +67,40 @@ export function useCircleGateway() {
     ] : undefined,
   });
 
-  // Fetch unified balances on address change
+  // Get unified balance across all chains - define before useEffect
+  const getUnifiedBalance = useCallback(async () => {
+    if (!address) return null;
+
+    try {
+      const response = await gatewayClient.balances('USDC', address);
+      console.log('Unified balances fetched:', response);
+      return response.balances;
+    } catch (error) {
+      console.error('Failed to fetch unified balance:', error);
+      return null;
+    }
+  }, [address, gatewayClient]);
+
+  // Fetch unified balances on address/chain change + auto-refresh
   useEffect(() => {
     const fetchBalances = async () => {
       if (address) {
         const balances = await getUnifiedBalance();
         if (balances) {
-          console.log('Fetched Gateway balances:', balances);
+          console.log('Auto-refresh Gateway balances at', new Date().toISOString(), balances);
           setUnifiedBalances(balances);
         }
       }
     };
     
+    // Initial fetch
     fetchBalances();
-  }, [address, chain?.id]);
+    
+    // Set up auto-refresh every 5 seconds for better UX
+    const interval = setInterval(fetchBalances, 5000);
+    
+    return () => clearInterval(interval);
+  }, [address, chain?.id, getUnifiedBalance]);
 
   // Real deposit to Gateway
   const depositToGateway = useCallback(async (amount: string) => {
@@ -362,19 +382,6 @@ export function useCircleGateway() {
     }
   }, [address, walletClient, chain, usdcAddress, switchChain, publicClient, gatewayWalletAddress, gatewayMinterAddress, gatewayClient]);
 
-  // Get unified balance across all chains
-  const getUnifiedBalance = useCallback(async () => {
-    if (!address) return null;
-
-    try {
-      const response = await gatewayClient.balances('USDC', address);
-      console.log('Unified balances fetched:', response);
-      return response.balances;
-    } catch (error) {
-      console.error('Failed to fetch unified balance:', error);
-      return null;
-    }
-  }, [address, gatewayClient]);
 
   return {
     address,
