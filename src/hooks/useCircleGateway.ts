@@ -332,45 +332,48 @@ export function useCircleGateway() {
       ));
       
       let signature: `0x${string}`;
-      toast.loading('Step 2/4: Opening MetaMask for signature...', { id: toastId });
+      toast.loading('Step 2/4: Preparing signature...', { id: toastId });
       
       try {
-        console.log('Starting signature request process...');
-        console.log('Wallet client available:', !!walletClient);
-        console.log('Address:', address);
+        console.log('=== SIGNATURE PROCESS START ===');
+        console.log('Wallet client exists:', !!walletClient);
+        console.log('Account address:', address);
+        console.log('TypedData domain:', typedData.domain);
+        console.log('TypedData types:', typedData.types);
+        console.log('TypedData message (raw):', typedData.message);
         
-        // Create the signature request with proper formatting
-        const signatureRequest = {
-          account: address as Address,
-          domain: typedData.domain,
-          types: typedData.types,
-          primaryType: 'BurnIntent' as const,
-          message: typedData.message,
-        };
-        
-        console.log('Attempting to trigger MetaMask signature dialog...');
-        
-        // Call signTypedData directly without modifications
-        // The wallet will handle BigInt serialization internally
-        signature = await walletClient.signTypedData(signatureRequest as any);
-        
-        console.log('✅ Signature received successfully:', signature);
-      } catch (signError: any) {
-        console.error('Signature error details:', signError);
-        
-        // If BigInt error, retry with string conversion
-        if (signError.message?.includes('BigInt') || signError.message?.includes('serialize')) {
-          console.log('BigInt serialization issue detected, retrying with strings...');
-          toast.loading('Step 2/4: Retrying signature with different format...', { id: toastId });
+        // First attempt: Try with raw message (BigInt values)
+        try {
+          console.log('Attempt 1: Trying with raw BigInt values...');
           
-          // Convert all BigInt values to hex strings for MetaMask
-          const messageWithStrings = JSON.parse(JSON.stringify(typedData.message, (key, value) => {
-            if (typeof value === 'bigint') {
-              // Convert BigInt to hex string for EIP-712
-              return '0x' + value.toString(16);
+          const signatureRequest = {
+            account: address as Address,
+            domain: typedData.domain,
+            types: typedData.types,
+            primaryType: 'BurnIntent' as const,
+            message: typedData.message,
+          };
+          
+          console.log('Calling walletClient.signTypedData...');
+          signature = await walletClient.signTypedData(signatureRequest as any);
+          console.log('✅ SUCCESS: Signature received with raw values:', signature);
+          
+        } catch (firstError: any) {
+          console.error('❌ First attempt failed:', firstError.message);
+          
+          // Second attempt: Convert BigInt to strings
+          console.log('Attempt 2: Converting BigInt to strings...');
+          
+          const messageWithStrings = {
+            maxBlockHeight: typedData.message.maxBlockHeight.toString(),
+            maxFee: typedData.message.maxFee.toString(),
+            spec: {
+              ...typedData.message.spec,
+              value: typedData.message.spec.value.toString(),
             }
-            return value;
-          }));
+          };
+          
+          console.log('Message with strings:', messageWithStrings);
           
           const retryRequest = {
             account: address as Address,
@@ -380,29 +383,26 @@ export function useCircleGateway() {
             message: messageWithStrings,
           };
           
-          try {
-            signature = await walletClient.signTypedData(retryRequest as any);
-            console.log('✅ Signature received after retry:', signature);
-          } catch (retryError: any) {
-            console.error('Retry also failed:', retryError);
-            toast.dismiss(toastId);
-            if (retryError?.message?.includes('User rejected') || retryError?.message?.includes('User denied')) {
-              toast.error('Transaction cancelled by user');
-              throw new Error('Transaction cancelled by user');
-            }
-            toast.error(`Failed to sign: ${retryError?.message || 'Unknown error'}`);
-            throw new Error(`Failed to sign transaction: ${retryError?.message || 'Unknown error'}`);
-          }
-        } else {
-          // Handle other errors
-          toast.dismiss(toastId);
-          if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
-            toast.error('Transaction cancelled by user');
-            throw new Error('Transaction cancelled by user');
-          }
-          toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
-          throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
+          console.log('Retrying walletClient.signTypedData with strings...');
+          signature = await walletClient.signTypedData(retryRequest as any);
+          console.log('✅ SUCCESS: Signature received with string values:', signature);
         }
+        
+        console.log('=== SIGNATURE PROCESS END ===');
+        
+      } catch (signError: any) {
+        console.error('=== SIGNATURE FAILED ===');
+        console.error('Error:', signError);
+        console.error('Error message:', signError?.message);
+        console.error('Error stack:', signError?.stack);
+        
+        toast.dismiss(toastId);
+        if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
+          toast.error('Transaction cancelled by user');
+          throw new Error('Transaction cancelled by user');
+        }
+        toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
+        throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
       }
 
       // Step 3: Get attestation from Gateway API
