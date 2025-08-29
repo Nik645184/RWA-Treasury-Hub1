@@ -137,23 +137,41 @@ export function useCircleGateway() {
         toast.dismiss('balance-refresh');
       }
       
-      // Schedule additional checks for finality
-      const checkIntervals = [3000, 10000, 30000]; // 3s, 10s, 30s
+      // Get current chain domain - map chainId to domain
+      let currentDomain = 0;
+      if (chain.id === 1 || chain.id === 11155111) currentDomain = 0; // Ethereum/Sepolia
+      else if (chain.id === 43114 || chain.id === 43113) currentDomain = 1; // Avalanche
+      else if (chain.id === 8453 || chain.id === 84532) currentDomain = 6; // Base
+      else if (chain.id === 10) currentDomain = 2; // Optimism
+      else if (chain.id === 42161) currentDomain = 3; // Arbitrum
+      else if (chain.id === 137) currentDomain = 7; // Polygon
+      
+      // Track pending deposit
+      const pendingKey = `pending-${currentDomain}-${Date.now()}`;
+      toast.loading(`Deposit pending finalization on ${chain?.name}. Base requires ~13-19 minutes for finality.`, { 
+        id: pendingKey,
+        duration: 180000 // Show for 3 minutes
+      });
+      
+      // Schedule additional checks for finality  
+      const checkIntervals = [5000, 15000, 30000, 60000, 120000, 180000, 300000, 600000, 900000]; // up to 15 minutes
       checkIntervals.forEach(delay => {
         setTimeout(async () => {
           const balances = await getUnifiedBalance();
           if (balances) {
             setUnifiedBalances(balances);
             
-            // Check if deposit is now visible
-            const totalBalance = balances.reduce((sum: number, b: any) => 
-              sum + parseFloat(b.balance || '0'), 0
-            );
+            // Check if deposit is now visible on the specific chain
+            const chainBalance = balances.find((b: any) => b.domain === currentDomain);
+            const previousBalance = unifiedBalances.find((b: any) => b.domain === currentDomain);
+            const previousAmount = previousBalance ? parseFloat(previousBalance.balance) : 0;
+            const currentAmount = chainBalance ? parseFloat(chainBalance.balance) : 0;
             
-            if (totalBalance > 0) {
-              toast.success(`Balance updated: ${totalBalance.toFixed(2)} USDC`, { 
+            if (currentAmount > previousAmount) {
+              toast.dismiss(pendingKey);
+              toast.success(`✅ Gateway balance updated on ${chain?.name}: ${currentAmount.toFixed(6)} USDC (+ ${(currentAmount - previousAmount).toFixed(6)} USDC)`, { 
                 id: 'balance-refresh',
-                duration: 3000 
+                duration: 5000 
               });
             }
           }
