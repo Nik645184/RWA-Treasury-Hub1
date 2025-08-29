@@ -62,6 +62,12 @@ const CircleGatewayLive = () => {
   const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [pendingDeposit, setPendingDeposit] = useState<{
+    txHash?: string;
+    amount?: string;
+    chain?: string;
+    timestamp?: Date;
+  }>({});
 
   // Debug logging
   useEffect(() => {
@@ -378,36 +384,56 @@ const CircleGatewayLive = () => {
                   </Alert>
                 )}
                 
-                {/* Show pending deposit info for Base */}
+                
+                {/* Show Base balance info */}
                 {chainId === 8453 && (
-                  <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
-                    <AlertCircle className="h-4 w-4 text-orange-600" />
-                    <AlertTitle className="text-orange-900 dark:text-orange-400">Base Deposit Information</AlertTitle>
-                    <AlertDescription className="text-orange-800 dark:text-orange-300">
-                      <div className="mt-2 space-y-2">
-                        <p><strong>Gateway Wallet Address:</strong></p>
-                        <code className="block text-xs bg-white/50 dark:bg-black/30 p-2 rounded">
-                          0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE
-                        </code>
-                        <p className="text-sm mt-2">
-                          ⚠️ <strong>Почему 13-19 минут?</strong> Base - это L2 сеть, которая публикует свое состояние на Ethereum L1. 
-                          Circle Gateway ждет финализацию на Ethereum (~65 блоков) для максимальной безопасности.
-                        </p>
-                        <div className="mt-2 p-2 bg-blue-100 dark:bg-blue-950 rounded text-xs">
-                          <p className="font-semibold mb-1">Время финализации по сетям:</p>
-                          <ul className="space-y-1">
-                            <li>• <strong>Avalanche:</strong> ~8 секунд (мгновенная финализация)</li>
-                            <li>• <strong>Polygon:</strong> ~8 секунд</li>
-                            <li>• <strong>Base/Arbitrum/OP:</strong> 13-19 минут (ждут L1 Ethereum)</li>
-                            <li>• <strong>Ethereum:</strong> 13-19 минут (нативная финализация)</li>
-                          </ul>
+                  <>
+                    {/* Check for pending Base deposit */}
+                    {unifiedBalances.find(b => b.domain === 6)?.balance === "0" && (
+                      <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertTitle>Ожидание финализации депозита на Base</AlertTitle>
+                        <AlertDescription>
+                          <div className="mt-2 space-y-2">
+                            <p>Ваш депозит на Base обрабатывается. Статус:</p>
+                            <ul className="text-sm space-y-1">
+                              <li>✅ Транзакция подтверждена в блокчейне Base</li>
+                              <li>⏳ Ожидание финализации на Ethereum L1 (13-19 минут)</li>
+                              <li>⏱️ После финализации баланс появится автоматически</li>
+                            </ul>
+                            <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-950 rounded">
+                              <p className="text-xs font-semibold">Проверьте транзакцию:</p>
+                              <a 
+                                href={`https://basescan.org/address/${address}`}
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                              >
+                                Посмотреть на BaseScan
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                    
+                    <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+                      <Info className="h-4 w-4 text-blue-600" />
+                      <AlertTitle>Информация о Base Gateway</AlertTitle>
+                      <AlertDescription className="text-sm">
+                        <div className="mt-2 space-y-2">
+                          <p><strong>Gateway Wallet:</strong></p>
+                          <code className="block text-xs bg-white/50 dark:bg-black/30 p-2 rounded">
+                            0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE
+                          </code>
+                          <p className="text-xs mt-2">
+                            Base требует ~65 блоков Ethereum для финализации (13-19 минут)
+                          </p>
                         </div>
-                        <p className="text-sm mt-2">
-                          ✅ Make sure you used the <strong>deposit()</strong> method on the Gateway contract, not a direct USDC transfer.
-                        </p>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
+                      </AlertDescription>
+                    </Alert>
+                  </>
                 )}
               </div>
             </div>
