@@ -614,15 +614,18 @@ const CircleGatewayLive = () => {
                   </p>
                   <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
-                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
-                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    Gateway Balance
-                  </p>
-                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(2)} USDC
-                  </p>
-                </div>
+                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      Gateway Balance (Unified)
+                    </p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Available for instant cross-chain transfer
+                    </p>
+                  </div>
               </div>
             </CardContent>
           </Card>
@@ -907,6 +910,27 @@ const CircleGatewayLive = () => {
                         className="text-lg mt-2"
                       />
                     </div>
+
+                    {/* Show pending deposit info if exists */}
+                    {chainId === 1 && unifiedBalances.find(b => b.domain === 0)?.balance === "1.999950" && (
+                      <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
+                        <AlertCircle className="h-4 w-4 text-amber-600" />
+                        <AlertTitle>Deposit Pending Finalization</AlertTitle>
+                        <AlertDescription>
+                          <div className="mt-2 space-y-2">
+                            <p>Your recent deposit is being processed on Ethereum mainnet.</p>
+                            <ul className="text-sm space-y-1">
+                              <li>✅ Transaction confirmed</li>
+                              <li>⏳ Waiting for finality (~13-19 minutes)</li>
+                              <li>📊 Current Gateway balance will update automatically</li>
+                            </ul>
+                            <p className="text-xs mt-2">
+                              Ethereum requires ~65 block confirmations for finality
+                            </p>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
                     <Button
                       onClick={handleDeposit}
