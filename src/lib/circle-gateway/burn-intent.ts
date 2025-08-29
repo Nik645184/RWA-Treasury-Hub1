@@ -1,6 +1,12 @@
 import { pad, zeroAddress, maxUint256, parseUnits, type Address } from 'viem';
 
-const domain = { name: 'GatewayWallet', version: '1' };
+// Domain needs chainId and verifyingContract for mainnet
+const domain = { 
+  name: 'GatewayWallet', 
+  version: '1',
+  // Note: Circle Gateway doesn't use chainId or verifyingContract in domain
+  // This is intentional to allow cross-chain signatures
+};
 
 const EIP712Domain = [
   { name: 'name', type: 'string' },

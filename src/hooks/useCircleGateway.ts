@@ -319,24 +319,30 @@ export function useCircleGateway() {
         console.log('Requesting signature from wallet...', {
           account: address,
           domain: typedData.domain,
-          primaryType: typedData.primaryType
-        });
-        
-        // Use a timeout for wallet signature
-        const signPromise = walletClient.signTypedData({
-          account: address,
-          domain: typedData.domain as any,
           primaryType: typedData.primaryType,
-          types: typedData.types,
-          message: typedData.message,
+          message: typedData.message
         });
         
-        // Add 30 second timeout for signature
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Wallet signature timeout - please check your wallet')), 30000)
-        );
+        // Ensure we're passing the correct types structure
+        const signatureRequest = {
+          account: address as Address,
+          domain: typedData.domain,
+          types: {
+            EIP712Domain: [
+              { name: 'name', type: 'string' },
+              { name: 'version', type: 'string' },
+            ],
+            TransferSpec: typedData.types.TransferSpec,
+            BurnIntent: typedData.types.BurnIntent,
+          },
+          primaryType: 'BurnIntent' as const,
+          message: typedData.message,
+        };
         
-        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
+        console.log('Signature request:', JSON.stringify(signatureRequest, null, 2));
+        
+        // Request signature with simplified approach
+        signature = await walletClient.signTypedData(signatureRequest as any);
         console.log('Signature received:', signature);
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);
