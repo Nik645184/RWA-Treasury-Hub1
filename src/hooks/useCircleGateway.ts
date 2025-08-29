@@ -296,9 +296,12 @@ export function useCircleGateway() {
         amount,
       }, isMainnet); // Pass isMainnet to use proper fees
 
-      // Step 2: Sign burn intent
+      // Step 2: Sign burn intent with better error handling
       toast.loading('Step 2/4: Signing burn intent...', { id: toastId });
+      console.log('Creating typed data for burn intent:', burnIntent);
+      
       const typedData = burnIntentTypedData(burnIntent);
+      console.log('Typed data created:', typedData);
       
       // Convert values to strings for API
       const messageForApi = {
@@ -311,13 +314,24 @@ export function useCircleGateway() {
         }
       };
       
-      const signature = await walletClient.signTypedData({
-        account: address,
-        domain: typedData.domain as any,
-        primaryType: typedData.primaryType,
-        types: typedData.types,
-        message: typedData.message,
-      });
+      let signature: `0x${string}`;
+      try {
+        console.log('Requesting signature from wallet...');
+        signature = await walletClient.signTypedData({
+          account: address,
+          domain: typedData.domain as any,
+          primaryType: typedData.primaryType,
+          types: typedData.types,
+          message: typedData.message,
+        });
+        console.log('Signature received:', signature);
+      } catch (signError: any) {
+        console.error('Error signing burn intent:', signError);
+        if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
+          throw new Error('Transaction cancelled by user');
+        }
+        throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
+      }
 
       // Step 3: Get attestation from Gateway API
       toast.loading('Step 3/4: Getting attestation from Circle...', { id: toastId });
