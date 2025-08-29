@@ -38,6 +38,7 @@ import {
   ArrowUpDown,
   Bell,
 } from 'lucide-react';
+import TestSignature from './TestSignature';
 
 // Chain configurations
 const chains = [
@@ -1226,6 +1227,9 @@ const CircleGatewayLive = () => {
               </Tabs>
             </CardContent>
           </Card>
+          
+          {/* Add Test Signature Component for debugging */}
+          <TestSignature />
         </>
       )}
     </div>

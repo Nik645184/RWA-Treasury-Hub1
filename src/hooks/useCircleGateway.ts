@@ -297,50 +297,35 @@ export function useCircleGateway() {
       }, isMainnet); // Pass isMainnet to use proper fees
 
       // Step 2: Sign burn intent with better error handling
-      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
-      console.log('Creating typed data for burn intent:', burnIntent);
+      toast.loading('Step 2/4: Preparing signature request...', { id: toastId });
+      console.log('Creating typed data for burn intent:', JSON.stringify(burnIntent, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      ));
       
       const typedData = burnIntentTypedData(burnIntent);
-      console.log('Typed data created:', typedData);
+      console.log('Typed data created, types:', typedData.types);
+      console.log('Domain:', typedData.domain);
       
       // Convert values to strings for API
-      const messageForApi = {
-        ...typedData.message,
-        maxBlockHeight: typedData.message.maxBlockHeight.toString(),
-        maxFee: typedData.message.maxFee.toString(),
-        spec: {
-          ...typedData.message.spec,
-          value: typedData.message.spec.value.toString(),
-        }
-      };
+      const messageForApi = JSON.parse(JSON.stringify(typedData.message, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      ));
       
       let signature: `0x${string}`;
+      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
+      
       try {
-        console.log('Requesting signature from wallet...');
+        console.log('Starting signature request process...');
         
-        // Create a helper function to convert addresses to bytes32
-        const addressToBytes32 = (address: string): `0x${string}` => {
-          return ('0x' + address.toLowerCase().slice(2).padStart(64, '0')) as `0x${string}`;
-        };
-        
-        // Convert the message for MetaMask with proper formatting
-        const messageForSigning = {
-          maxBlockHeight: typedData.message.maxBlockHeight.toString(),
-          maxFee: typedData.message.maxFee.toString(),
-          spec: {
-            ...typedData.message.spec,
-            value: typedData.message.spec.value.toString(),
-            // Ensure all addresses are properly formatted as bytes32
-            sourceContract: addressToBytes32(typedData.message.spec.sourceContract),
-            destinationContract: addressToBytes32(typedData.message.spec.destinationContract),
-            sourceToken: addressToBytes32(typedData.message.spec.sourceToken),
-            destinationToken: addressToBytes32(typedData.message.spec.destinationToken),
-            sourceDepositor: addressToBytes32(typedData.message.spec.sourceDepositor),
-            destinationRecipient: addressToBytes32(typedData.message.spec.destinationRecipient),
-            sourceSigner: addressToBytes32(typedData.message.spec.sourceSigner),
-            destinationCaller: addressToBytes32(typedData.message.spec.destinationCaller),
+        // For MetaMask, we need all BigInt values as strings
+        const messageForSigning = JSON.parse(JSON.stringify(typedData.message, (key, value) => {
+          if (typeof value === 'bigint') {
+            return value.toString();
           }
-        };
+          return value;
+        }));
+        
+        console.log('Message for signing:', messageForSigning);
         
         const signatureRequest = {
           account: address as Address,
@@ -350,9 +335,23 @@ export function useCircleGateway() {
           message: messageForSigning,
         };
         
-        console.log('Calling signTypedData with properly formatted message...');
-        signature = await walletClient.signTypedData(signatureRequest as any);
-        console.log('Signature received:', signature);
+        console.log('Calling walletClient.signTypedData...');
+        
+        try {
+          // Try signing with a timeout
+          const signPromise = walletClient.signTypedData(signatureRequest as any);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Signature timeout after 30 seconds')), 30000);
+          });
+          
+          signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
+          console.log('✅ Signature received successfully:', signature);
+          
+        } catch (timeoutError: any) {
+          console.error('Signature attempt failed:', timeoutError);
+          throw timeoutError;
+        }
+        
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);
         toast.dismiss(toastId);
