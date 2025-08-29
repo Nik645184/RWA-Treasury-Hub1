@@ -66,16 +66,20 @@ const CircleGatewayLive = () => {
     console.log('Connect error:', connectError);
   }, [connectors, isConnected, connectError]);
 
-  // Fetch unified balance when connected
+  // Fetch unified balance when connected and periodically
   useEffect(() => {
-    if (isConnected && address) {
-      getUnifiedBalance().then(balances => {
-        if (balances) {
-          setUnifiedBalances(balances);
-        }
-      });
-    }
-  }, [isConnected, address, getUnifiedBalance]);
+    const interval = setInterval(() => {
+      if (isConnected && address) {
+        getUnifiedBalance().then(balances => {
+          if (balances) {
+            setUnifiedBalances(balances);
+          }
+        });
+      }
+    }, 5000); // Refresh every 5 seconds
+    
+    return () => clearInterval(interval);
+  }, [isConnected, address, getUnifiedBalance, chainId]);
 
   const handleConnect = async (connectorId?: string) => {
     try {

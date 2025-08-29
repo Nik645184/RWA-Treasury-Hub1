@@ -48,15 +48,19 @@ export function useCircleGateway() {
   const gatewayMinterAddress = getGatewayMinterAddress(isMainnet);
 
   // Get USDC balance on current chain
-  const { data: usdcBalance } = useReadContract({
+  const { data: usdcBalance, refetch: refetchUsdcBalance } = useReadContract({
     address: usdcAddress as Address | undefined,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
+    query: {
+      enabled: !!address && !!usdcAddress,
+      refetchInterval: 5000, // Auto-refresh every 5 seconds
+    }
   });
 
   // Get Gateway balance on current chain  
-  const { data: gatewayBalance } = useReadContract({
+  const { data: gatewayBalance, refetch: refetchGatewayBalance } = useReadContract({
     address: gatewayWalletAddress as Address,
     abi: gatewayWalletAbi,
     functionName: 'availableBalance',
@@ -64,18 +68,30 @@ export function useCircleGateway() {
       usdcAddress as Address,
       address
     ] : undefined,
+    query: {
+      enabled: !!address && !!usdcAddress && !!gatewayWalletAddress,
+      refetchInterval: 5000, // Auto-refresh every 5 seconds
+    }
   });
 
-  // Fetch unified balances on address change
+  // Fetch unified balances on address change and periodically
   useEffect(() => {
-    if (address) {
-      getUnifiedBalance().then(balances => {
+    const fetchBalances = async () => {
+      if (address) {
+        const balances = await getUnifiedBalance();
         if (balances) {
           setUnifiedBalances(balances);
         }
-      });
-    }
-  }, [address]);
+      }
+    };
+    
+    fetchBalances();
+    
+    // Set up periodic refresh
+    const interval = setInterval(fetchBalances, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(interval);
+  }, [address, chain?.id]); // Re-fetch when chain changes too
 
   // Real deposit to Gateway
   const depositToGateway = useCallback(async (amount: string) => {
@@ -120,11 +136,16 @@ export function useCircleGateway() {
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
-      // Refresh balances after a delay (for chain finality)
+      // Refresh balances immediately
+      refetchUsdcBalance?.();
+      refetchGatewayBalance?.();
+      
+      // Refresh unified balances after a delay (for chain finality)
       setTimeout(() => {
         getUnifiedBalance().then(balances => {
           if (balances) setUnifiedBalances(balances);
         });
+        refetchGatewayBalance?.();
       }, 5000);
       
       return true;
