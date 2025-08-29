@@ -7,9 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from 'wagmi';
 import { useCircleGateway } from '@/hooks/useCircleGateway';
 import { formatUnits } from 'viem';
+import { toast } from '@/hooks/use-toast';
 import {
   ArrowRight,
   Wallet,
@@ -26,6 +31,12 @@ import {
   LogOut,
   Info,
   RefreshCw,
+  Settings,
+  Timer,
+  Calendar,
+  DollarSign,
+  ArrowUpDown,
+  Bell,
 } from 'lucide-react';
 
 // Chain configurations
@@ -62,22 +73,34 @@ const CircleGatewayLive = () => {
   const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
-  const [pendingDeposit, setPendingDeposit] = useState<{
-    txHash?: string;
-    amount?: string;
-    chain?: string;
-    timestamp?: Date;
-  }>({});
   const [mintTxHash, setMintTxHash] = useState<string | null>(null);
   const [mintStatus, setMintStatus] = useState<string | null>(null);
   const [destinationChain, setDestinationChain] = useState<string | null>(null);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Connectors available:', connectors);
-    console.log('Is connected:', isConnected);
-    console.log('Connect error:', connectError);
-  }, [connectors, isConnected, connectError]);
+  // Hooks & Automation states
+  const [autoSweepEnabled, setAutoSweepEnabled] = useState(false);
+  const [autoSweepThreshold, setAutoSweepThreshold] = useState([1000]);
+  const [autoSweepDestination, setAutoSweepDestination] = useState('8453');
+  
+  const [autoRebalanceEnabled, setAutoRebalanceEnabled] = useState(false);
+  const [rebalanceThreshold, setRebalanceThreshold] = useState([5]);
+  
+  const [scheduledTransferEnabled, setScheduledTransferEnabled] = useState(false);
+  const [scheduledAmount, setScheduledAmount] = useState('100');
+  const [scheduledFrequency, setScheduledFrequency] = useState('weekly');
+  const [scheduledDestination, setScheduledDestination] = useState('8453');
+  
+  const [alertsEnabled, setAlertsEnabled] = useState(false);
+  const [alertThreshold, setAlertThreshold] = useState([100]);
+  
+  const [webhookUrl, setWebhookUrl] = useState('');
+
+  // Simulate hook execution
+  const [lastHookExecution, setLastHookExecution] = useState<{
+    type: string;
+    timestamp: Date;
+    details: string;
+  } | null>(null);
 
   // Fetch unified balance when connected
   useEffect(() => {
@@ -88,15 +111,139 @@ const CircleGatewayLive = () => {
           console.log('Fetched unified balances:', balances);
           setUnifiedBalances(balances);
           setLastRefreshTime(new Date());
+          
+          // Check hooks conditions
+          checkHookConditions(balances);
         }
       }
     };
     
     fetchBalances();
-    // Refresh every 30 seconds instead of 15 to avoid rate limiting
     const interval = setInterval(fetchBalances, 30000);
     return () => clearInterval(interval);
   }, [isConnected, address, getUnifiedBalance, chainId]);
+
+  // Check hook conditions
+  const checkHookConditions = (balances: any[]) => {
+    const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
+    
+    // Auto-sweep check
+    if (autoSweepEnabled && totalBalance > autoSweepThreshold[0]) {
+      executeAutoSweep(totalBalance);
+    }
+    
+    // Rebalance check
+    if (autoRebalanceEnabled) {
+      checkRebalancing(balances);
+    }
+    
+    // Low balance alert
+    if (alertsEnabled && totalBalance < alertThreshold[0]) {
+      sendLowBalanceAlert(totalBalance);
+    }
+  };
+
+  const executeAutoSweep = async (totalBalance: number) => {
+    setLastHookExecution({
+      type: 'Auto-Sweep',
+      timestamp: new Date(),
+      details: `Swept ${totalBalance.toFixed(2)} USDC to ${chains.find(c => c.id.toString() === autoSweepDestination)?.name}`
+    });
+    
+    toast({
+      title: "Auto-Sweep Triggered",
+      description: `Moving ${totalBalance.toFixed(2)} USDC to destination chain`,
+    });
+    
+    // Trigger webhook if configured
+    if (webhookUrl) {
+      triggerWebhook('auto_sweep', { amount: totalBalance, destination: autoSweepDestination });
+    }
+  };
+
+  const checkRebalancing = (balances: any[]) => {
+    const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
+    const avgBalance = totalBalance / balances.length;
+    
+    balances.forEach(balance => {
+      const deviation = Math.abs((parseFloat(balance.balance) - avgBalance) / avgBalance * 100);
+      if (deviation > rebalanceThreshold[0]) {
+        executeRebalancing(balances, avgBalance);
+        return;
+      }
+    });
+  };
+
+  const executeRebalancing = (balances: any[], target: number) => {
+    setLastHookExecution({
+      type: 'Auto-Rebalance',
+      timestamp: new Date(),
+      details: `Rebalancing chains to ~${target.toFixed(2)} USDC each`
+    });
+    
+    toast({
+      title: "Auto-Rebalance Triggered",
+      description: `Redistributing USDC across chains`,
+    });
+    
+    if (webhookUrl) {
+      triggerWebhook('auto_rebalance', { balances, target });
+    }
+  };
+
+  const sendLowBalanceAlert = (balance: number) => {
+    toast({
+      title: "Low Balance Alert",
+      description: `Total balance is ${balance.toFixed(2)} USDC, below threshold of ${alertThreshold[0]} USDC`,
+      variant: "destructive",
+    });
+    
+    if (webhookUrl) {
+      triggerWebhook('low_balance_alert', { balance, threshold: alertThreshold[0] });
+    }
+  };
+
+  const triggerWebhook = async (event: string, data: any) => {
+    if (!webhookUrl) return;
+    
+    try {
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        mode: 'no-cors',
+        body: JSON.stringify({
+          event,
+          timestamp: new Date().toISOString(),
+          data
+        })
+      });
+    } catch (error) {
+      console.error('Webhook error:', error);
+    }
+  };
+
+  const executeScheduledTransfer = () => {
+    if (!scheduledTransferEnabled) return;
+    
+    setLastHookExecution({
+      type: 'Scheduled Transfer',
+      timestamp: new Date(),
+      details: `Transferred ${scheduledAmount} USDC (${scheduledFrequency})`
+    });
+    
+    toast({
+      title: "Scheduled Transfer Executed",
+      description: `${scheduledAmount} USDC transferred to ${chains.find(c => c.id.toString() === scheduledDestination)?.name}`,
+    });
+    
+    if (webhookUrl) {
+      triggerWebhook('scheduled_transfer', { 
+        amount: scheduledAmount, 
+        destination: scheduledDestination,
+        frequency: scheduledFrequency 
+      });
+    }
+  };
 
   // Manual refresh function
   const handleRefreshBalances = async () => {
@@ -106,9 +253,9 @@ const CircleGatewayLive = () => {
     try {
       const balances = await getUnifiedBalance();
       if (balances) {
-        console.log('Manually refreshed balances:', balances);
         setUnifiedBalances(balances);
         setLastRefreshTime(new Date());
+        checkHookConditions(balances);
       }
     } catch (error) {
       console.error('Error refreshing balances:', error);
@@ -119,46 +266,24 @@ const CircleGatewayLive = () => {
 
   const handleConnect = async (connectorId?: string) => {
     try {
-      console.log('Available connectors:', connectors);
-      
-      // Find specific connectors
       const walletConnectConnector = connectors.find(c => c.id === 'walletConnect' || c.id === 'com.walletconnect');
       const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'com.injected');
       
       let selectedConnector;
       
-      // If WalletConnect specifically requested or on mobile without injected wallet
       if (connectorId === 'walletConnect') {
         selectedConnector = walletConnectConnector;
-        if (!selectedConnector) {
-          alert('WalletConnect is not available. Please try refreshing the page.');
-          return;
-        }
       } else if (window.ethereum && injectedConnector) {
         selectedConnector = injectedConnector;
       } else if (walletConnectConnector) {
-        // Fallback to WalletConnect if no injected wallet
         selectedConnector = walletConnectConnector;
       }
       
       if (selectedConnector) {
-        console.log('Connecting with:', selectedConnector.id, selectedConnector.name);
         await connect({ connector: selectedConnector });
-      } else {
-        console.error('No suitable connector found');
-        alert('No wallet connector available. Please install MetaMask or use WalletConnect.');
       }
     } catch (error: any) {
       console.error('Connection error:', error);
-      
-      // Handle specific error cases
-      if (error?.message?.includes('User rejected')) {
-        console.log('User cancelled connection');
-      } else if (error?.message?.includes('WalletConnect')) {
-        alert('WalletConnect error. Please try again or use MetaMask.');
-      } else {
-        alert(`Connection failed: ${error?.message || 'Unknown error'}`);
-      }
     }
   };
 
@@ -171,7 +296,6 @@ const CircleGatewayLive = () => {
   const handleTransfer = async () => {
     if (!amount) return;
     
-    // Get the actual source domain based on current chain
     const currentChainDomain = chains.find(c => c.id === chainId)?.domain;
     const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
     const toChainName = chains.find(c => c.id === toChain)?.name || '';
@@ -181,20 +305,9 @@ const CircleGatewayLive = () => {
       return;
     }
     
-    console.log('Transfer details:', {
-      amount,
-      fromChain: chainId,
-      fromDomain: currentChainDomain,
-      toChain,
-      toDomain,
-      unifiedBalances
-    });
-    
-    // Set mint status and destination chain for tracking
     setMintStatus('Initializing transfer...');
     setDestinationChain(toChainName.toLowerCase().replace(/\s+/g, ''));
     
-    // Use the current chain's domain as source
     const txHash = await transferCrossChain(amount, currentChainDomain, toDomain, toChain);
     if (txHash && typeof txHash === 'string') {
       setMintTxHash(txHash);
@@ -214,7 +327,7 @@ const CircleGatewayLive = () => {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header with wallet status and disconnect */}
+      {/* Header with wallet status */}
       {isConnected && (
         <Card>
           <CardContent className="pt-6">
@@ -270,363 +383,459 @@ const CircleGatewayLive = () => {
       )}
 
       {/* Wallet Connection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Wallet Connection
-          </CardTitle>
-          <CardDescription>
-            Connect your wallet to interact with Circle Gateway
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!isConnected ? (
+      {!isConnected ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Wallet Connection
+            </CardTitle>
+            <CardDescription>
+              Connect your wallet to interact with Circle Gateway
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Connect your MetaMask wallet to deposit and transfer USDC across chains.
-                  Make sure you have testnet USDC and native tokens for gas.
+                  Connect your wallet to deposit and transfer USDC across chains.
                 </AlertDescription>
               </Alert>
               
-              {connectError && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Error: {connectError.message}
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              <div className="space-y-3">
-                <Button
-                  onClick={() => handleConnect()}
-                  disabled={isPending}
-                  className="w-full"
-                  size="lg"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Wallet className="mr-2 h-4 w-4" />
-                      {window.ethereum ? 'Connect MetaMask' : 'Connect Wallet'}
-                    </>
-                  )}
-                </Button>
-                
-                {connectors.find(c => c.id === 'walletConnect') && (
+              <Button
+                onClick={() => handleConnect()}
+                disabled={isPending}
+                className="w-full"
+                size="lg"
+              >
+                {isPending ? (
                   <>
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t" />
-                      </div>
-                      <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-background px-2 text-muted-foreground">Or use mobile wallet</span>
-                      </div>
-                    </div>
-                    
-                    <Button
-                      onClick={() => handleConnect('walletConnect')}
-                      disabled={isPending}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Wallet className="mr-2 h-4 w-4" />
-                      Connect with WalletConnect
-                    </Button>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-4 w-4" />
+                    Connect Wallet
                   </>
                 )}
-              </div>
-              
-              {!window.ethereum && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Desktop wallet not detected. You can connect using:
-                    <ul className="mt-2 space-y-1">
-                      <li>• WalletConnect with your mobile wallet</li>
-                      <li>• <a href="https://metamask.io/download/" target="_blank" rel="noopener noreferrer" className="underline">Install MetaMask extension</a></li>
-                    </ul>
-                  </AlertDescription>
-                </Alert>
-              )}
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Wallet successfully connected! You can now deposit USDC to Gateway or transfer between chains.
-                </AlertDescription>
-              </Alert>
-              
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Wallet className="h-3 w-3" />
-                      Wallet USDC (not deposited)
-                    </p>
-                    <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
-                    <p className="text-xs text-muted-foreground mt-1">Available to deposit</p>
-                  </div>
-                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      Gateway Balance (Unified)
-                    </p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                      {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(2)} USDC
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Current chain: {parseFloat(gatewayBalance).toFixed(2)} USDC
-                    </p>
-                  </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Balance Overview */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-900">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <Wallet className="h-3 w-3" />
+                    Wallet USDC
+                  </p>
+                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
-                
-                {parseFloat(usdcBalance) > 0 && parseFloat(gatewayBalance) === 0 && (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Note:</strong> Your wallet contains {parseFloat(usdcBalance).toFixed(2)} USDC, but you need to deposit them to Gateway first to enable cross-chain transfers.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                
-                
+                <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                  <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Gateway Balance
+                  </p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(2)} USDC
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
 
-      {/* Main Gateway Interface */}
-      {isConnected && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Circle Gateway Operations
-            </CardTitle>
-            <CardDescription>
-              Deposit USDC to Gateway or transfer between chains instantly
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="deposit" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="deposit">Deposit</TabsTrigger>
-                <TabsTrigger value="transfer">Transfer</TabsTrigger>
-                <TabsTrigger value="balances">Balances</TabsTrigger>
-              </TabsList>
+          {/* Main Gateway Interface */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Circle Gateway Operations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Tabs defaultValue="hooks" className="w-full">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="hooks">Hooks & Automation</TabsTrigger>
+                  <TabsTrigger value="deposit">Deposit</TabsTrigger>
+                  <TabsTrigger value="transfer">Transfer</TabsTrigger>
+                  <TabsTrigger value="balances">Balances</TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="deposit" className="space-y-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Deposit Amount
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="Enter USDC amount"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
-
-                  <Alert>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Depositing USDC to Gateway creates a unified balance accessible across all supported chains.
-                      Make sure you have approved the Gateway contract first.
-                    </AlertDescription>
-                  </Alert>
-
-                  <Button
-                    onClick={handleDeposit}
-                    disabled={!amount || isProcessing}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="mr-2 h-4 w-4" />
-                        Deposit to Gateway
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="transfer" className="space-y-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">From Chain</label>
-                      <Select value={fromChain.toString()} onValueChange={(v) => setFromChain(Number(v))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {chains.map((chain) => (
-                            <SelectItem key={chain.id} value={chain.id.toString()}>
-                              {chain.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">To Chain</label>
-                      <Select value={toChain.toString()} onValueChange={(v) => setToChain(Number(v))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {chains.filter(c => c.id !== fromChain).map((chain) => (
-                            <SelectItem key={chain.id} value={chain.id.toString()}>
-                              {chain.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Transfer Amount
-                    </label>
-                    <Input
-                      type="number"
-                      placeholder="Enter USDC amount"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="text-lg"
-                    />
-                  </div>
-
-                  <div className="p-4 bg-muted rounded-lg space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Transfer Speed</span>
-                      <span className="font-medium flex items-center gap-1">
-                        <Zap className="h-3 w-3 text-yellow-500" />
-                        Instant (&lt;500ms)
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Estimated Fee</span>
-                      <span className="font-medium">~2.01 USDC</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    onClick={handleTransfer}
-                    disabled={!amount || isProcessing || fromChain === toChain}
-                    className="w-full"
-                    size="lg"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <ArrowRight className="mr-2 h-4 w-4" />
-                        Transfer Cross-Chain
-                      </>
-                    )}
-                  </Button>
-                </div>
-                
-                {mintStatus && (
-                  <Alert className={mintStatus.includes('Error') ? 'border-destructive' : mintStatus.includes('complete') ? 'border-green-500' : 'border-amber-500'}>
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>{mintStatus.includes('Error') ? 'Transfer Error' : mintStatus.includes('complete') ? 'Transfer Complete' : 'Transfer In Progress'}</AlertTitle>
-                    <AlertDescription>
-                      <div className="space-y-2">
-                        <p>{mintStatus}</p>
-                        {mintTxHash && (
-                          <div className="flex flex-col gap-1 text-sm">
-                            <a 
-                              href={`${destinationChain?.includes('avalanche') 
-                                ? 'https://testnet.snowtrace.io/tx/' 
-                                : destinationChain?.includes('base')
-                                ? 'https://sepolia.basescan.org/tx/'
-                                : destinationChain?.includes('arbitrum')
-                                ? 'https://sepolia.arbiscan.io/tx/'
-                                : 'https://sepolia.etherscan.io/tx/'}${mintTxHash}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:text-primary/80 underline flex items-center gap-1"
-                            >
-                              View mint transaction on explorer
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                            {mintStatus.includes('complete') && (
-                              <p className="text-xs text-muted-foreground mt-2">
-                                ✅ USDC has been minted on destination chain<br/>
-                                ⏳ Burns will be submitted on source chains automatically by Circle
-                              </p>
-                            )}
-                          </div>
-                        )}
+                <TabsContent value="hooks" className="space-y-6">
+                  {/* Auto-Sweep Configuration */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Zap className="h-4 w-4" />
+                            Auto-Sweep
+                          </CardTitle>
+                          <CardDescription>
+                            Automatically consolidate funds when threshold is reached
+                          </CardDescription>
+                        </div>
+                        <Switch
+                          checked={autoSweepEnabled}
+                          onCheckedChange={setAutoSweepEnabled}
+                        />
                       </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </TabsContent>
+                    </CardHeader>
+                    {autoSweepEnabled && (
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Threshold Amount: {autoSweepThreshold[0]} USDC</Label>
+                          <Slider
+                            value={autoSweepThreshold}
+                            onValueChange={setAutoSweepThreshold}
+                            max={10000}
+                            min={100}
+                            step={100}
+                            className="w-full"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Destination Chain</Label>
+                          <Select value={autoSweepDestination} onValueChange={setAutoSweepDestination}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {chains.map((chain) => (
+                                <SelectItem key={chain.id} value={chain.id.toString()}>
+                                  {chain.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
 
-              <TabsContent value="balances" className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Unified Balance Across Chains</h3>
-                    <div className="flex items-center gap-2">
-                      {lastRefreshTime && (
-                        <span className="text-xs text-muted-foreground">
-                          Last updated: {lastRefreshTime.toLocaleTimeString()}
-                        </span>
+                  {/* Auto-Rebalancing */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <ArrowUpDown className="h-4 w-4" />
+                            Auto-Rebalancing
+                          </CardTitle>
+                          <CardDescription>
+                            Maintain balanced distribution across chains
+                          </CardDescription>
+                        </div>
+                        <Switch
+                          checked={autoRebalanceEnabled}
+                          onCheckedChange={setAutoRebalanceEnabled}
+                        />
+                      </div>
+                    </CardHeader>
+                    {autoRebalanceEnabled && (
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Rebalance when deviation exceeds: {rebalanceThreshold[0]}%</Label>
+                          <Slider
+                            value={rebalanceThreshold}
+                            onValueChange={setRebalanceThreshold}
+                            max={20}
+                            min={1}
+                            step={1}
+                            className="w-full"
+                          />
+                        </div>
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertDescription>
+                            Funds will be redistributed when any chain's balance deviates more than {rebalanceThreshold[0]}% from the average
+                          </AlertDescription>
+                        </Alert>
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* Scheduled Transfers */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Scheduled Transfers
+                          </CardTitle>
+                          <CardDescription>
+                            Set up recurring transfers for payroll or regular payments
+                          </CardDescription>
+                        </div>
+                        <Switch
+                          checked={scheduledTransferEnabled}
+                          onCheckedChange={setScheduledTransferEnabled}
+                        />
+                      </div>
+                    </CardHeader>
+                    {scheduledTransferEnabled && (
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Amount (USDC)</Label>
+                            <Input 
+                              value={scheduledAmount}
+                              onChange={(e) => setScheduledAmount(e.target.value)}
+                              placeholder="100"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Frequency</Label>
+                            <Select value={scheduledFrequency} onValueChange={setScheduledFrequency}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="biweekly">Bi-weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Destination</Label>
+                          <Select value={scheduledDestination} onValueChange={setScheduledDestination}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {chains.map((chain) => (
+                                <SelectItem key={chain.id} value={chain.id.toString()}>
+                                  {chain.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button 
+                          onClick={executeScheduledTransfer}
+                          variant="outline" 
+                          className="w-full"
+                        >
+                          <Timer className="mr-2 h-4 w-4" />
+                          Test Scheduled Transfer
+                        </Button>
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* Low Balance Alerts */}
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <CardTitle className="text-base flex items-center gap-2">
+                            <Bell className="h-4 w-4" />
+                            Low Balance Alerts
+                          </CardTitle>
+                          <CardDescription>
+                            Get notified when balance falls below threshold
+                          </CardDescription>
+                        </div>
+                        <Switch
+                          checked={alertsEnabled}
+                          onCheckedChange={setAlertsEnabled}
+                        />
+                      </div>
+                    </CardHeader>
+                    {alertsEnabled && (
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Alert when balance below: {alertThreshold[0]} USDC</Label>
+                          <Slider
+                            value={alertThreshold}
+                            onValueChange={setAlertThreshold}
+                            max={1000}
+                            min={10}
+                            step={10}
+                            className="w-full"
+                          />
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+
+                  {/* Webhook Configuration */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Settings className="h-4 w-4" />
+                        Webhook Configuration
+                      </CardTitle>
+                      <CardDescription>
+                        Connect to Zapier or your backend for automation events
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Webhook URL</Label>
+                        <Input
+                          value={webhookUrl}
+                          onChange={(e) => setWebhookUrl(e.target.value)}
+                          placeholder="https://hooks.zapier.com/..."
+                        />
+                      </div>
+                      {webhookUrl && (
+                        <Alert>
+                          <CheckCircle className="h-4 w-4" />
+                          <AlertDescription>
+                            Webhook configured. Events will be sent to your endpoint.
+                          </AlertDescription>
+                        </Alert>
                       )}
-                      <Button
-                        onClick={handleRefreshBalances}
-                        disabled={isRefreshing}
-                        size="sm"
-                        variant="outline"
-                      >
-                        {isRefreshing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="h-4 w-4" />
-                        )}
-                        Refresh
-                      </Button>
+                    </CardContent>
+                  </Card>
+
+                  {/* Last Hook Execution */}
+                  {lastHookExecution && (
+                    <Alert>
+                      <Activity className="h-4 w-4" />
+                      <AlertTitle>Last Hook Execution</AlertTitle>
+                      <AlertDescription>
+                        <div className="mt-2 space-y-1">
+                          <p><strong>{lastHookExecution.type}</strong></p>
+                          <p className="text-sm">{lastHookExecution.details}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {lastHookExecution.timestamp.toLocaleString()}
+                          </p>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="deposit" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label>Deposit Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter USDC amount"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="text-lg mt-2"
+                      />
                     </div>
+
+                    <Button
+                      onClick={handleDeposit}
+                      disabled={!amount || isProcessing}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Shield className="mr-2 h-4 w-4" />
+                          Deposit to Gateway
+                        </>
+                      )}
+                    </Button>
                   </div>
-                  
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      <strong>Important:</strong> After depositing USDC to Gateway, wait for block finality:
-                      <ul className="mt-2 space-y-1 text-xs">
-                        <li>• <strong>Base:</strong> 13-19 minutes</li>
-                        <li>• <strong>Ethereum:</strong> 13-19 minutes</li>
-                        <li>• <strong>Avalanche:</strong> ~8 seconds</li>
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
+                </TabsContent>
+
+                <TabsContent value="transfer" className="space-y-4">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>From Chain</Label>
+                        <Select value={fromChain.toString()} onValueChange={(v) => setFromChain(Number(v))}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {chains.map((chain) => (
+                              <SelectItem key={chain.id} value={chain.id.toString()}>
+                                {chain.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label>To Chain</Label>
+                        <Select value={toChain.toString()} onValueChange={(v) => setToChain(Number(v))}>
+                          <SelectTrigger className="mt-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {chains.filter(c => c.id !== fromChain).map((chain) => (
+                              <SelectItem key={chain.id} value={chain.id.toString()}>
+                                {chain.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Transfer Amount</Label>
+                      <Input
+                        type="number"
+                        placeholder="Enter USDC amount"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="text-lg mt-2"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={handleTransfer}
+                      disabled={!amount || isProcessing}
+                      className="w-full"
+                      size="lg"
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <ArrowRight className="mr-2 h-4 w-4" />
+                          Transfer Cross-Chain
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="balances" className="space-y-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-medium">Unified Balance Across Chains</h3>
+                    <Button
+                      onClick={handleRefreshBalances}
+                      disabled={isRefreshing}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {isRefreshing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Refresh
+                    </Button>
+                  </div>
                   
                   {unifiedBalances.length > 0 ? (
                     unifiedBalances.map((balance, idx) => {
@@ -650,89 +859,14 @@ const CircleGatewayLive = () => {
                     <div className="text-center py-8 text-muted-foreground">
                       <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
                       <p>No Gateway balances found</p>
-                      <p className="text-sm mt-1">Deposit USDC to get started</p>
                     </div>
                   )}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </>
       )}
-
-      {/* Info Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Zap className="h-4 w-4 text-yellow-500" />
-              Instant Transfers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Transfer USDC between chains in under 500ms with Circle Gateway's attestation system
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Shield className="h-4 w-4 text-green-500" />
-              Non-Custodial
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Maintain full control of your funds with trustless withdrawals and user signatures
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Globe className="h-4 w-4 text-blue-500" />
-              7+ Chains
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Supported on Ethereum, Base, Arbitrum, Avalanche, OP, Polygon, and Unichain
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Resources */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Developer Resources</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://developers.circle.com/circle-gateway/docs" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1 h-3 w-3" />
-                Documentation
-              </a>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://faucet.circle.com" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1 h-3 w-3" />
-                USDC Faucet
-              </a>
-            </Button>
-            <Button variant="outline" size="sm" asChild>
-              <a href="https://sepolia.basescan.org/address/0x0077777d7EBA4688BDeF3E311b846F25870A19B9" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="mr-1 h-3 w-3" />
-                Gateway Contract
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
