@@ -73,11 +73,12 @@ const CircleGatewayLive = () => {
       getUnifiedBalance();
     }
     
+    // More aggressive refresh interval - every 3 seconds
     const interval = setInterval(() => {
       if (isConnected && address) {
         getUnifiedBalance();
       }
-    }, 5000); // Refresh every 5 seconds
+    }, 3000); // Refresh every 3 seconds
     
     return () => clearInterval(interval);
   }, [isConnected, address, getUnifiedBalance, chainId]);

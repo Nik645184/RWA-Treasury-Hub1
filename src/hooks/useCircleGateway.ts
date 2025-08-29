@@ -170,12 +170,15 @@ export function useCircleGateway() {
         });
       }
       
-      // Refresh from API after a delay (for chain finality)
-      setTimeout(async () => {
-        const balances = await getUnifiedBalance();
-        if (balances) setUnifiedBalances(balances);
-        refetchGatewayBalance?.();
-      }, 5000);
+      // Refresh from API multiple times after deposit to catch when it updates
+      const refreshIntervals = [2000, 5000, 10000, 15000]; // Check at 2s, 5s, 10s, 15s
+      refreshIntervals.forEach(delay => {
+        setTimeout(async () => {
+          const balances = await getUnifiedBalance();
+          if (balances) setUnifiedBalances(balances);
+          refetchGatewayBalance?.();
+        }, delay);
+      });
       
       return true;
     } catch (error: any) {
