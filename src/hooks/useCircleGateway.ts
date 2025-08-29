@@ -263,9 +263,14 @@ export function useCircleGateway() {
       });
 
       toast.loading('Waiting for mint confirmation...', { id: toastId });
-      await publicClient?.waitForTransactionReceipt({ hash: mintTx });
+      
+      // Return mint transaction hash for tracking
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: mintTx });
       
       toast.success(`Successfully transferred ${amount} USDC cross-chain!`, { id: toastId });
+      
+      // Return the mint transaction hash
+      return mintTx;
       
       // Refresh balances
       setTimeout(() => {

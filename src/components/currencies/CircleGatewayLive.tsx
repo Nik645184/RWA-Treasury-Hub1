@@ -68,6 +68,9 @@ const CircleGatewayLive = () => {
     chain?: string;
     timestamp?: Date;
   }>({});
+  const [mintTxHash, setMintTxHash] = useState<string | null>(null);
+  const [mintStatus, setMintStatus] = useState<string | null>(null);
+  const [destinationChain, setDestinationChain] = useState<string | null>(null);
 
   // Debug logging
   useEffect(() => {
@@ -171,6 +174,7 @@ const CircleGatewayLive = () => {
     // Get the actual source domain based on current chain
     const currentChainDomain = chains.find(c => c.id === chainId)?.domain;
     const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
+    const toChainName = chains.find(c => c.id === toChain)?.name || '';
     
     if (currentChainDomain === undefined) {
       alert('Please switch to a supported network');
@@ -186,8 +190,19 @@ const CircleGatewayLive = () => {
       unifiedBalances
     });
     
+    // Set mint status and destination chain for tracking
+    setMintStatus('Initializing transfer...');
+    setDestinationChain(toChainName.toLowerCase().replace(/\s+/g, ''));
+    
     // Use the current chain's domain as source
-    await transferCrossChain(amount, currentChainDomain, toDomain, toChain);
+    const txHash = await transferCrossChain(amount, currentChainDomain, toDomain, toChain);
+    if (txHash && typeof txHash === 'string') {
+      setMintTxHash(txHash);
+      setMintStatus('Transfer complete! USDC has been minted on destination chain.');
+    } else {
+      setMintStatus(null);
+      setMintTxHash(null);
+    }
     setAmount('');
   };
 
@@ -586,6 +601,43 @@ const CircleGatewayLive = () => {
                     )}
                   </Button>
                 </div>
+                
+                {mintStatus && (
+                  <Alert className={mintStatus.includes('Error') ? 'border-destructive' : mintStatus.includes('complete') ? 'border-green-500' : 'border-amber-500'}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>{mintStatus.includes('Error') ? 'Transfer Error' : mintStatus.includes('complete') ? 'Transfer Complete' : 'Transfer In Progress'}</AlertTitle>
+                    <AlertDescription>
+                      <div className="space-y-2">
+                        <p>{mintStatus}</p>
+                        {mintTxHash && (
+                          <div className="flex flex-col gap-1 text-sm">
+                            <a 
+                              href={`${destinationChain?.includes('avalanche') 
+                                ? 'https://testnet.snowtrace.io/tx/' 
+                                : destinationChain?.includes('base')
+                                ? 'https://sepolia.basescan.org/tx/'
+                                : destinationChain?.includes('arbitrum')
+                                ? 'https://sepolia.arbiscan.io/tx/'
+                                : 'https://sepolia.etherscan.io/tx/'}${mintTxHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:text-primary/80 underline flex items-center gap-1"
+                            >
+                              View mint transaction on explorer
+                              <ExternalLink className="h-3 w-3" />
+                            </a>
+                            {mintStatus.includes('complete') && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                ✅ USDC has been minted on destination chain<br/>
+                                ⏳ Burns will be submitted on source chains automatically by Circle
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </TabsContent>
 
               <TabsContent value="balances" className="space-y-4">
