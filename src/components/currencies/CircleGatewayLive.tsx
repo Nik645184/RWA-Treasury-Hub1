@@ -49,6 +49,7 @@ const CircleGatewayLive = () => {
   const {
     usdcBalance,
     gatewayBalance,
+    unifiedBalances: hookUnifiedBalances,
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,
@@ -84,6 +85,14 @@ const CircleGatewayLive = () => {
       setIsRefreshing(false);
     }
   };
+
+  // Sync unified balances from hook
+  useEffect(() => {
+    if (hookUnifiedBalances && hookUnifiedBalances.length > 0) {
+      setUnifiedBalances(hookUnifiedBalances);
+      setLastRefresh(new Date());
+    }
+  }, [hookUnifiedBalances]);
 
   // Fetch unified balance when connected
   useEffect(() => {
@@ -329,12 +338,14 @@ const CircleGatewayLive = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
-                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
+                  <p className="text-sm text-muted-foreground mb-1">Wallet USDC (Current Chain)</p>
+                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(6)} USDC</p>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance</p>
-                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
+                  <p className="text-sm text-muted-foreground mb-1">Total Gateway Balance</p>
+                  <p className="text-lg font-bold">
+                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance), 0).toFixed(6)} USDC
+                  </p>
                 </div>
               </div>
             </div>
