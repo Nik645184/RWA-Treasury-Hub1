@@ -120,8 +120,12 @@ export function useCircleGateway() {
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
-      // Start polling for balance updates (chain finality can take 15-20 min)
-      toast.info('Balance will update after chain finality (~15-20 minutes)', { duration: 10000 });
+      // Refresh balances after a delay (for chain finality)
+      setTimeout(() => {
+        getUnifiedBalance().then(balances => {
+          if (balances) setUnifiedBalances(balances);
+        });
+      }, 5000);
       
       return true;
     } catch (error: any) {
@@ -139,9 +143,8 @@ export function useCircleGateway() {
     sourceDomain: number,
     destinationDomain: number,
     destinationChainId: number,
-    sourceChainId: number,
   ) => {
-    if (!address || !walletClient) {
+    if (!address || !walletClient || !usdcAddress) {
       toast.error('Please connect your wallet and select a network');
       return;
     }
@@ -150,12 +153,7 @@ export function useCircleGateway() {
     const toastId = toast.loading('Step 1/4: Creating burn intent...');
 
     try {
-      const sourceUsdcAddress = getUsdcAddress(sourceChainId);
       const destUsdcAddress = getUsdcAddress(destinationChainId);
-      
-      if (!sourceUsdcAddress) {
-        throw new Error('USDC not supported on source chain');
-      }
       if (!destUsdcAddress) {
         throw new Error('USDC not supported on destination chain');
       }
@@ -166,7 +164,7 @@ export function useCircleGateway() {
         destinationDomain,
         sourceContract: gatewayWalletAddress,
         destinationContract: gatewayMinterAddress,
-        sourceToken: sourceUsdcAddress,
+        sourceToken: usdcAddress,
         destinationToken: destUsdcAddress,
         sourceDepositor: address,
         destinationRecipient: address,
@@ -232,8 +230,12 @@ export function useCircleGateway() {
       
       toast.success(`Successfully transferred ${amount} USDC cross-chain!`, { id: toastId });
       
-      // Note about balance updates
-      toast.info('Balance will update after chain finality (~15-20 minutes)', { duration: 10000 });
+      // Refresh balances
+      setTimeout(() => {
+        getUnifiedBalance().then(balances => {
+          if (balances) setUnifiedBalances(balances);
+        });
+      }, 5000);
       
       return true;
     } catch (error: any) {

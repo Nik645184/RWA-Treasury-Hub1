@@ -24,7 +24,6 @@ import {
   ExternalLink,
   Activity,
   LogOut,
-  RefreshCw,
 } from 'lucide-react';
 
 // Chain configurations
@@ -59,8 +58,6 @@ const CircleGatewayLive = () => {
   const [fromChain, setFromChain] = useState(84532); // Base Sepolia
   const [toChain, setToChain] = useState(421614); // Arbitrum Sepolia
   const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   // Debug logging
   useEffect(() => {
@@ -69,39 +66,16 @@ const CircleGatewayLive = () => {
     console.log('Connect error:', connectError);
   }, [connectors, isConnected, connectError]);
 
-  // Function to refresh balances
-  const refreshBalances = async () => {
-    if (!isConnected || !address) return;
-    
-    setIsRefreshing(true);
-    try {
-      const balances = await getUnifiedBalance();
-      if (balances) {
-        setUnifiedBalances(balances);
-        setLastRefresh(new Date());
-      }
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   // Fetch unified balance when connected
   useEffect(() => {
     if (isConnected && address) {
-      refreshBalances();
+      getUnifiedBalance().then(balances => {
+        if (balances) {
+          setUnifiedBalances(balances);
+        }
+      });
     }
-  }, [isConnected, address]);
-
-  // Auto-refresh balances every 10 seconds when connected
-  useEffect(() => {
-    if (!isConnected) return;
-    
-    const interval = setInterval(() => {
-      refreshBalances();
-    }, 10000); // Refresh every 10 seconds
-    
-    return () => clearInterval(interval);
-  }, [isConnected, address]);
+  }, [isConnected, address, getUnifiedBalance]);
 
   const handleConnect = async (connectorId?: string) => {
     try {
@@ -152,19 +126,15 @@ const CircleGatewayLive = () => {
     if (!amount) return;
     await depositToGateway(amount);
     setAmount('');
-    // Trigger immediate refresh attempt (though balance won't update until finality)
-    setTimeout(() => refreshBalances(), 2000);
   };
 
   const handleTransfer = async () => {
     if (!amount) return;
     const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
     const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-    // Pass both source and destination chain IDs
-    await transferCrossChain(amount, fromDomain, toDomain, toChain, fromChain);
+    // Pass the destination chain ID as the 4th parameter
+    await transferCrossChain(amount, fromDomain, toDomain, toChain);
     setAmount('');
-    // Trigger immediate refresh attempt (though balance won't update until finality)
-    setTimeout(() => refreshBalances(), 2000);
   };
 
   const formatAddress = (addr: string) => {
@@ -491,45 +461,7 @@ const CircleGatewayLive = () => {
 
               <TabsContent value="balances" className="space-y-4">
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-medium">Unified Balance Across Chains</h3>
-                    <div className="flex items-center gap-2">
-                      {lastRefresh && (
-                        <span className="text-xs text-muted-foreground">
-                          Last updated: {lastRefresh.toLocaleTimeString()}
-                        </span>
-                      )}
-                      <Button
-                        onClick={refreshBalances}
-                        disabled={isRefreshing}
-                        size="sm"
-                        variant="outline"
-                      >
-                        {isRefreshing ? (
-                          <>
-                            <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                            Refreshing...
-                          </>
-                        ) : (
-                          <>
-                            <RefreshCw className="mr-2 h-3 w-3" />
-                            Refresh
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Total unified balance */}
-                  {unifiedBalances.length > 0 && (
-                    <div className="p-4 bg-primary/10 rounded-lg">
-                      <p className="text-sm text-muted-foreground mb-1">Total Unified Balance</p>
-                      <p className="text-2xl font-bold">
-                        {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance), 0).toFixed(6)} USDC
-                      </p>
-                    </div>
-                  )}
-                  
+                  <h3 className="font-medium">Unified Balance Across Chains</h3>
                   {unifiedBalances.length > 0 ? (
                     unifiedBalances.map((balance, idx) => {
                       const chain = chains.find(c => c.domain === balance.domain);
@@ -542,7 +474,7 @@ const CircleGatewayLive = () => {
                             </span>
                           </div>
                           <span className="font-mono font-bold">
-                            {parseFloat(balance.balance).toFixed(6)} USDC
+                            {balance.balance} USDC
                           </span>
                         </div>
                       );
@@ -553,15 +485,6 @@ const CircleGatewayLive = () => {
                       <p>No Gateway balances found</p>
                       <p className="text-sm mt-1">Deposit USDC to get started</p>
                     </div>
-                  )}
-                  
-                  {unifiedBalances.length > 0 && (
-                    <Alert>
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription className="text-xs">
-                        Note: Balance updates may take 15-20 minutes after transfers due to chain finality requirements. Balances are auto-refreshed every 10 seconds.
-                      </AlertDescription>
-                    </Alert>
                   )}
                 </div>
               </TabsContent>
