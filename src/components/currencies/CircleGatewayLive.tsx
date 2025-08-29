@@ -181,10 +181,6 @@ const CircleGatewayLive = () => {
       details: `Rebalancing chains to ~${target.toFixed(2)} USDC each`
     });
     
-    toast({
-      title: "Auto-Rebalance Triggered",
-      description: `Redistributing USDC across chains`,
-    });
     
     if (webhookUrl) {
       triggerWebhook('auto_rebalance', { balances, target });
