@@ -109,8 +109,10 @@ const CircleGatewayLive = () => {
 
   // Fetch unified balance when connected
   useEffect(() => {
+    if (!isConnected || !address) return;
+    
     const fetchBalances = async () => {
-      if (isConnected && address) {
+      try {
         const balances = await getUnifiedBalance();
         if (balances) {
           console.log('Fetched unified balances:', balances);
@@ -122,13 +124,15 @@ const CircleGatewayLive = () => {
             checkHookConditions(balances);
           }
         }
+      } catch (error) {
+        console.error('Error fetching balances:', error);
       }
     };
     
     fetchBalances();
-    const interval = setInterval(fetchBalances, 30000);
+    const interval = setInterval(fetchBalances, 60000); // Reduced to once per minute
     return () => clearInterval(interval);
-  }, [isConnected, address, getUnifiedBalance, chainId, isExecutingHook]);
+  }, [isConnected, address, chainId]); // Removed getUnifiedBalance and isExecutingHook from dependencies to prevent loops
 
   // Check hook conditions with debouncing
   const checkHookConditions = (balances: any[]) => {
