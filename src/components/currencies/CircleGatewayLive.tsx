@@ -51,13 +51,13 @@ const CircleGatewayLive = () => {
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,
+    unifiedBalances,
     isProcessing,
   } = useCircleGateway();
 
   const [amount, setAmount] = useState('');
   const [fromChain, setFromChain] = useState(84532); // Base Sepolia
   const [toChain, setToChain] = useState(421614); // Arbitrum Sepolia
-  const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
 
   // Debug logging
   useEffect(() => {
@@ -68,13 +68,14 @@ const CircleGatewayLive = () => {
 
   // Fetch unified balance when connected and periodically
   useEffect(() => {
+    // Initial fetch when component mounts
+    if (isConnected && address && unifiedBalances) {
+      getUnifiedBalance();
+    }
+    
     const interval = setInterval(() => {
       if (isConnected && address) {
-        getUnifiedBalance().then(balances => {
-          if (balances) {
-            setUnifiedBalances(balances);
-          }
-        });
+        getUnifiedBalance();
       }
     }, 5000); // Refresh every 5 seconds
     
@@ -218,7 +219,9 @@ const CircleGatewayLive = () => {
                     </p>
                   </div>
                   <p className="text-4xl font-bold text-primary">
-                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
+                    {unifiedBalances && unifiedBalances.length > 0 
+                      ? unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6) 
+                      : '0.000000'} USDC
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Instantly accessible across all supported chains
@@ -236,16 +239,22 @@ const CircleGatewayLive = () => {
               </div>
               
               {/* Breakdown by chain */}
-              {unifiedBalances.length > 0 && (
+              {unifiedBalances && unifiedBalances.length > 0 && (
                 <div className="mt-4 pt-4 border-t space-y-2">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution:</p>
                   {unifiedBalances.map((balance) => {
                     const chain = chains.find(c => c.domain === balance.domain);
+                    const isCurrentChain = chain && currentChain && chain.domain === currentChain.domain;
                     return (
                       <div key={balance.domain} className="flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
-                          <span className="text-sm">{chain?.name || `Domain ${balance.domain}`}</span>
+                          <span className="text-sm">
+                            {chain?.name || `Domain ${balance.domain}`}
+                            {isCurrentChain && (
+                              <Badge variant="secondary" className="ml-2 text-xs">Current</Badge>
+                            )}
+                          </span>
                         </div>
                         <span className="text-sm font-mono">{parseFloat(balance.balance).toFixed(6)} USDC</span>
                       </div>
@@ -361,8 +370,9 @@ const CircleGatewayLive = () => {
                   <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance</p>
+                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance ({currentChain?.name || 'Current Chain'})</p>
                   <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
+                  <p className="text-xs text-muted-foreground">On this network only</p>
                 </div>
               </div>
             </div>

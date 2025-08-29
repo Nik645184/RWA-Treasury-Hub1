@@ -289,6 +289,7 @@ export function useCircleGateway() {
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,
+    unifiedBalances,
     isProcessing,
     isConfirming,
     isSuccess,
