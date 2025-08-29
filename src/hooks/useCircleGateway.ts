@@ -297,7 +297,7 @@ export function useCircleGateway() {
       }, isMainnet); // Pass isMainnet to use proper fees
 
       // Step 2: Sign burn intent with better error handling
-      toast.loading('Step 2/4: Signing burn intent...', { id: toastId });
+      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
       console.log('Creating typed data for burn intent:', burnIntent);
       
       const typedData = burnIntentTypedData(burnIntent);
@@ -316,20 +316,40 @@ export function useCircleGateway() {
       
       let signature: `0x${string}`;
       try {
-        console.log('Requesting signature from wallet...');
-        signature = await walletClient.signTypedData({
+        console.log('Requesting signature from wallet...', {
+          account: address,
+          domain: typedData.domain,
+          primaryType: typedData.primaryType
+        });
+        
+        // Use a timeout for wallet signature
+        const signPromise = walletClient.signTypedData({
           account: address,
           domain: typedData.domain as any,
           primaryType: typedData.primaryType,
           types: typedData.types,
           message: typedData.message,
         });
+        
+        // Add 30 second timeout for signature
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Wallet signature timeout - please check your wallet')), 30000)
+        );
+        
+        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
         console.log('Signature received:', signature);
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);
+        toast.dismiss(toastId);
+        if (signError?.message?.includes('timeout')) {
+          toast.error('Wallet signature timeout - please check your wallet and try again');
+          throw new Error('Wallet signature timeout');
+        }
         if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
+          toast.error('Transaction cancelled by user');
           throw new Error('Transaction cancelled by user');
         }
+        toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
         throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
       }
 

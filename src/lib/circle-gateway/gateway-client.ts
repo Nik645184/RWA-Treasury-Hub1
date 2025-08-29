@@ -81,16 +81,35 @@ export class GatewayClient {
       }
     }
     
-    const response = await fetch(`${this.apiUrl}/balances`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+    try {
+      console.log('Fetching balances from:', this.apiUrl);
+      const response = await fetch(`${this.apiUrl}/balances`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          sources: domains.map((domain) => ({ depositor, domain })),
+        }),
+      });
+      
+      if (!response.ok) {
+        console.error('Gateway API error:', response.status, response.statusText);
+        throw new Error(`Gateway API error: ${response.status}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error('Failed to fetch balances:', error);
+      // Return empty balances on error to prevent app crash
+      return {
         token,
-        sources: domains.map((domain) => ({ depositor, domain })),
-      }),
-    });
-    
-    return response.json();
+        balances: domains.map(domain => ({
+          domain,
+          depositor,
+          balance: '0'
+        }))
+      };
+    }
   }
 
   // Request transfer attestation
