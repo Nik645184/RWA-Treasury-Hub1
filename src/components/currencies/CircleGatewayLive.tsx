@@ -133,6 +133,11 @@ const CircleGatewayLive = () => {
     if (!amount) return;
     await depositToGateway(amount);
     setAmount('');
+    
+    // Force immediate refresh of unified balances
+    setTimeout(() => {
+      getUnifiedBalance();
+    }, 1000);
   };
 
   const handleTransfer = async () => {
@@ -219,9 +224,23 @@ const CircleGatewayLive = () => {
                     </p>
                   </div>
                   <p className="text-4xl font-bold text-primary">
-                    {unifiedBalances && unifiedBalances.length > 0 
-                      ? unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6) 
-                      : '0.000000'} USDC
+                    {(() => {
+                      // If we have fresh gateway balance on current chain, use it to calculate more accurate total
+                      if (gatewayBalance && currentChain && unifiedBalances && unifiedBalances.length > 0) {
+                        const currentChainBalance = unifiedBalances.find(b => b.domain === currentChain.domain);
+                        const otherChainsTotal = unifiedBalances
+                          .filter(b => b.domain !== currentChain.domain)
+                          .reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
+                        
+                        // Use actual contract balance for current chain + API data for other chains
+                        const total = parseFloat(gatewayBalance) + otherChainsTotal;
+                        return total.toFixed(6);
+                      }
+                      // Fallback to API data
+                      return unifiedBalances && unifiedBalances.length > 0 
+                        ? unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6) 
+                        : '0.000000';
+                    })()} USDC
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Instantly accessible across all supported chains
