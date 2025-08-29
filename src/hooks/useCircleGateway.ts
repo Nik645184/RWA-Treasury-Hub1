@@ -196,10 +196,10 @@ export function useCircleGateway() {
 
       // Step 3: Get attestation from Gateway API
       toast.loading('Step 3/4: Getting attestation from Circle...', { id: toastId });
-      const transferResponse = await gatewayClient.transfer({
+      const transferResponse = await gatewayClient.transfer([{
         burnIntent: messageForApi,
         signature,
-      });
+      }]);
 
       if (!transferResponse.attestation || transferResponse.success === false) {
         throw new Error(transferResponse.message || 'Failed to get attestation');
