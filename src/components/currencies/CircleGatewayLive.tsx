@@ -373,6 +373,28 @@ const CircleGatewayLive = () => {
                     </AlertDescription>
                   </Alert>
                 )}
+                
+                {/* Show pending deposit info for Base */}
+                {chainId === 8453 && (
+                  <Alert className="border-orange-200 bg-orange-50 dark:bg-orange-950/30">
+                    <AlertCircle className="h-4 w-4 text-orange-600" />
+                    <AlertTitle className="text-orange-900 dark:text-orange-400">Base Deposit Information</AlertTitle>
+                    <AlertDescription className="text-orange-800 dark:text-orange-300">
+                      <div className="mt-2 space-y-2">
+                        <p><strong>Gateway Wallet Address:</strong></p>
+                        <code className="block text-xs bg-white/50 dark:bg-black/30 p-2 rounded">
+                          0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE
+                        </code>
+                        <p className="text-sm mt-2">
+                          ⚠️ Deposits on Base require 13-19 minutes for block finality before appearing in Gateway balance.
+                        </p>
+                        <p className="text-sm">
+                          ✅ Make sure you used the <strong>deposit()</strong> method on the Gateway contract, not a direct USDC transfer.
+                        </p>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
             </div>
           )}
