@@ -326,19 +326,19 @@ const CircleGatewayLive = () => {
         </>
       )}
 
-      {/* Wallet Connection */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Wallet className="h-5 w-5" />
-            Wallet Connection
-          </CardTitle>
-          <CardDescription>
-            Connect your wallet to interact with Circle Gateway
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!isConnected ? (
+      {/* Wallet Connection - Only show when NOT connected */}
+      {!isConnected && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5" />
+              Wallet Connection
+            </CardTitle>
+            <CardDescription>
+              Connect your wallet to interact with Circle Gateway
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="space-y-4">
               <Alert>
                 <AlertCircle className="h-4 w-4" />
@@ -414,30 +414,9 @@ const CircleGatewayLive = () => {
                 </Alert>
               )}
             </div>
-          ) : (
-            <div className="space-y-4">
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Wallet successfully connected! You can now deposit USDC to Gateway or transfer between chains.
-                </AlertDescription>
-              </Alert>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
-                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
-                </div>
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance ({currentChain?.name || 'Current Chain'})</p>
-                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
-                  <p className="text-xs text-muted-foreground">On this network only</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Main Gateway Interface */}
       {isConnected && (
