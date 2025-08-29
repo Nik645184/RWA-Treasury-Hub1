@@ -65,10 +65,27 @@ export function createBurnIntent({
   destinationRecipient,
   amount,
   sourceSigner,
-}: BurnIntentParams) {
+}: BurnIntentParams, isMainnet: boolean = false) {
+  // Calculate appropriate fee based on network
+  // Testnet uses lower fees for testing with small amounts
+  const getFeeForDomain = (domain: number, mainnet: boolean) => {
+    if (!mainnet) return 100000n; // 0.1 USDC for testnet
+    
+    // Mainnet fees by domain
+    switch(domain) {
+      case 0: return 2_000000n;  // Ethereum: 2 USDC
+      case 1: return 20000n;     // Avalanche: 0.02 USDC
+      case 2: return 1500n;      // OP: 0.0015 USDC
+      case 3: return 10000n;     // Arbitrum: 0.01 USDC
+      case 6: return 10000n;     // Base: 0.01 USDC
+      case 7: return 1500n;      // Polygon: 0.0015 USDC
+      default: return 2_010000n; // Default: 2.01 USDC
+    }
+  };
+  
   return {
     maxBlockHeight: maxUint256,
-    maxFee: 2_010000n, // 2.01 USDC covers fees for any chain
+    maxFee: getFeeForDomain(sourceDomain, isMainnet),
     spec: {
       version: 1,
       sourceDomain,

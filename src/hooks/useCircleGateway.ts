@@ -194,7 +194,7 @@ export function useCircleGateway() {
         throw new Error('USDC not supported on destination chain');
       }
 
-      // Step 1: Create burn intent
+      // Step 1: Create burn intent with proper fee
       toast.loading('Step 1/4: Creating burn intent...', { id: toastId });
       const burnIntent = createBurnIntent({
         sourceDomain,
@@ -206,7 +206,7 @@ export function useCircleGateway() {
         sourceDepositor: address,
         destinationRecipient: address,
         amount,
-      });
+      }, isMainnet); // Pass isMainnet to use proper fees
 
       // Step 2: Sign burn intent
       toast.loading('Step 2/4: Signing burn intent...', { id: toastId });
