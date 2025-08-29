@@ -386,9 +386,19 @@ const CircleGatewayLive = () => {
                           0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE
                         </code>
                         <p className="text-sm mt-2">
-                          ⚠️ Deposits on Base require 13-19 minutes for block finality before appearing in Gateway balance.
+                          ⚠️ <strong>Почему 13-19 минут?</strong> Base - это L2 сеть, которая публикует свое состояние на Ethereum L1. 
+                          Circle Gateway ждет финализацию на Ethereum (~65 блоков) для максимальной безопасности.
                         </p>
-                        <p className="text-sm">
+                        <div className="mt-2 p-2 bg-blue-100 dark:bg-blue-950 rounded text-xs">
+                          <p className="font-semibold mb-1">Время финализации по сетям:</p>
+                          <ul className="space-y-1">
+                            <li>• <strong>Avalanche:</strong> ~8 секунд (мгновенная финализация)</li>
+                            <li>• <strong>Polygon:</strong> ~8 секунд</li>
+                            <li>• <strong>Base/Arbitrum/OP:</strong> 13-19 минут (ждут L1 Ethereum)</li>
+                            <li>• <strong>Ethereum:</strong> 13-19 минут (нативная финализация)</li>
+                          </ul>
+                        </div>
+                        <p className="text-sm mt-2">
                           ✅ Make sure you used the <strong>deposit()</strong> method on the Gateway contract, not a direct USDC transfer.
                         </p>
                       </div>
