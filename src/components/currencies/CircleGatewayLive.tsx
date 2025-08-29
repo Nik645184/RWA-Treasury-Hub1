@@ -340,14 +340,28 @@ const CircleGatewayLive = () => {
                 <div className="p-3 bg-muted rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Wallet USDC (Current Chain)</p>
                   <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(6)} USDC</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {currentChain?.name || `Chain ID: ${chainId}`}
+                  </p>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Total Gateway Balance</p>
-                  <p className="text-lg font-bold">
-                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance), 0).toFixed(6)} USDC
+                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance (Current Chain)</p>
+                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(6)} USDC</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Available in Gateway on {currentChain?.name || 'this chain'}
                   </p>
                 </div>
               </div>
+              
+              {/* Network Notice */}
+              {currentChain?.isMainnet && unifiedBalances.length > 0 && (
+                <Alert className="mt-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You're on mainnet but your Gateway balances below are on testnet. Switch to a testnet to see matching balances.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           )}
         </CardContent>
