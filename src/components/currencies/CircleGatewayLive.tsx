@@ -473,19 +473,32 @@ const CircleGatewayLive = () => {
   const handleTransfer = async () => {
     if (!amount) return;
     
-    const currentChainDomain = chains.find(c => c.id === chainId)?.domain;
-    const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
+    // Use fromChain selected in UI, not current chain
+    const fromDomain = chains.find(c => c.id === fromChain)?.domain;
+    const toDomain = chains.find(c => c.id === toChain)?.domain;
     const toChainName = chains.find(c => c.id === toChain)?.name || '';
     
-    if (currentChainDomain === undefined) {
-      alert('Please switch to a supported network');
+    if (fromDomain === undefined || toDomain === undefined) {
+      toast({
+        title: "Invalid Chain Selection",
+        description: "Please select valid source and destination chains",
+        variant: "destructive"
+      });
       return;
     }
     
     setMintStatus('Initializing transfer...');
     setDestinationChain(toChainName.toLowerCase().replace(/\s+/g, ''));
     
-    const txHash = await transferCrossChain(amount, currentChainDomain, toDomain, toChain);
+    console.log('Transfer params:', {
+      amount,
+      fromChain,
+      fromDomain,
+      toChain,
+      toDomain
+    });
+    
+    const txHash = await transferCrossChain(amount, fromDomain, toDomain, toChain);
     if (txHash && typeof txHash === 'string') {
       setMintTxHash(txHash);
       setMintStatus('Transfer complete! USDC has been minted on destination chain.');
