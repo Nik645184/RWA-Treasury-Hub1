@@ -149,57 +149,109 @@ const CircleGatewayLive = () => {
     <div className="w-full space-y-6">
       {/* Header with wallet status and disconnect */}
       {isConnected && (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <span className="font-medium">Wallet Connected</span>
+        <>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <span className="font-medium">Wallet Connected</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Address:</span>
+                    <code className="text-sm bg-muted px-2 py-1 rounded">{formatAddress(address!)}</code>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Network:</span>
+                    <Select 
+                      value={chainId?.toString()} 
+                      onValueChange={(value) => switchChain?.({ chainId: Number(value) })}
+                    >
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue>
+                          <Badge variant={currentChain ? "default" : "destructive"}>
+                            {currentChain?.name || `Chain ID: ${chainId}`}
+                          </Badge>
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {chains.map((chain) => (
+                          <SelectItem key={chain.id} value={chain.id.toString()}>
+                            <div className="flex items-center gap-2">
+                              <div className={`w-2 h-2 rounded-full ${chain.color}`} />
+                              {chain.name}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Address:</span>
-                  <code className="text-sm bg-muted px-2 py-1 rounded">{formatAddress(address!)}</code>
+                
+                <Button
+                  onClick={() => disconnect()}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Disconnect
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Unified Balance Card - Primary Focus */}
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-5 w-5 text-primary" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Total Unified Balance (All Gateway Wallets)
+                    </p>
+                  </div>
+                  <p className="text-4xl font-bold text-primary">
+                    {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Instantly accessible across all supported chains
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Network:</span>
-                  <Select 
-                    value={chainId?.toString()} 
-                    onValueChange={(value) => switchChain?.({ chainId: Number(value) })}
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue>
-                        <Badge variant={currentChain ? "default" : "destructive"}>
-                          {currentChain?.name || `Chain ID: ${chainId}`}
-                        </Badge>
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {chains.map((chain) => (
-                        <SelectItem key={chain.id} value={chain.id.toString()}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${chain.color}`} />
-                            {chain.name}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="text-right space-y-2">
+                  <Badge variant="outline" className="border-primary/20">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Instant Transfer
+                  </Badge>
+                  <p className="text-xs text-muted-foreground">
+                    Active on {unifiedBalances.filter(b => parseFloat(b.balance) > 0).length} chain(s)
+                  </p>
                 </div>
               </div>
               
-              <Button
-                onClick={() => disconnect()}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Disconnect
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Breakdown by chain */}
+              {unifiedBalances.length > 0 && (
+                <div className="mt-4 pt-4 border-t space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution:</p>
+                  {unifiedBalances.map((balance) => {
+                    const chain = chains.find(c => c.domain === balance.domain);
+                    return (
+                      <div key={balance.domain} className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
+                          <span className="text-sm">{chain?.name || `Domain ${balance.domain}`}</span>
+                        </div>
+                        <span className="text-sm font-mono">{parseFloat(balance.balance).toFixed(6)} USDC</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Wallet Connection */}
