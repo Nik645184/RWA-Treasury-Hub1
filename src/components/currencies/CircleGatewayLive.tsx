@@ -978,6 +978,31 @@ const CircleGatewayLive = () => {
                 </TabsContent>
 
                 <TabsContent value="transfer" className="space-y-4">
+                  {/* Balance info alert */}
+                  <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <AlertDescription>
+                      <p className="text-sm font-medium mb-2">Your Gateway Balances by Chain:</p>
+                      <div className="space-y-1 text-xs">
+                        {chains.map(chain => {
+                          const balance = unifiedBalances.find(b => b.domain === chain.domain);
+                          const amount = balance ? parseFloat(balance.balance) : 0;
+                          return (
+                            <div key={chain.id} className="flex justify-between">
+                              <span>{chain.name}:</span>
+                              <span className={`font-mono font-medium ${amount > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                                {amount.toFixed(6)} USDC
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs mt-2 opacity-80">
+                        ⚠️ You can only transfer FROM chains where you have Gateway balance
+                      </p>
+                    </AlertDescription>
+                  </Alert>
+
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -987,13 +1012,31 @@ const CircleGatewayLive = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {chains.map((chain) => (
-                              <SelectItem key={chain.id} value={chain.id.toString()}>
-                                {chain.name}
-                              </SelectItem>
-                            ))}
+                            {chains.map((chain) => {
+                              const balance = unifiedBalances.find(b => b.domain === chain.domain);
+                              const hasBalance = balance && parseFloat(balance.balance) > 0;
+                              return (
+                                <SelectItem 
+                                  key={chain.id} 
+                                  value={chain.id.toString()}
+                                  disabled={!hasBalance}
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className={!hasBalance ? 'opacity-50' : ''}>{chain.name}</span>
+                                    <span className={`text-xs ${hasBalance ? 'text-green-600' : 'text-muted-foreground'}`}>
+                                      {balance ? parseFloat(balance.balance).toFixed(2) : '0'} USDC
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
+                        {fromChain && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Available: {unifiedBalances.find(b => b.domain === chains.find(c => c.id === fromChain)?.domain)?.balance || '0'} USDC
+                          </p>
+                        )}
                       </div>
                       <div>
                         <Label>To Chain</Label>
