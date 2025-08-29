@@ -260,6 +260,24 @@ const CircleGatewayLive = () => {
                       </div>
                     );
                   })}
+                  
+                  {/* Gateway Wallet Contract Addresses */}
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Gateway Wallet Contract Addresses:</p>
+                    <div className="space-y-1">
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Testnet: </span>
+                        <code className="bg-muted px-1 py-0.5 rounded">0x0077777d7EBA4688BDeF3E311b846F25870A19B9</code>
+                      </div>
+                      <div className="text-xs">
+                        <span className="text-muted-foreground">Mainnet: </span>
+                        <code className="bg-muted px-1 py-0.5 rounded">0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE</code>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Your USDC is stored in these non-custodial smart contracts across all supported chains.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
