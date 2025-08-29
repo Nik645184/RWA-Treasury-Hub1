@@ -312,59 +312,77 @@ export function useCircleGateway() {
       ));
       
       let signature: `0x${string}`;
-      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
+      toast.loading('Step 2/4: Opening MetaMask for signature...', { id: toastId });
       
       try {
         console.log('Starting signature request process...');
+        console.log('Wallet client available:', !!walletClient);
+        console.log('Address:', address);
         
-        // For MetaMask, we need all BigInt values as strings
-        const messageForSigning = JSON.parse(JSON.stringify(typedData.message, (key, value) => {
-          if (typeof value === 'bigint') {
-            return value.toString();
-          }
-          return value;
-        }));
-        
-        console.log('Message for signing:', messageForSigning);
-        
+        // Create the signature request with proper formatting
         const signatureRequest = {
           account: address as Address,
           domain: typedData.domain,
           types: typedData.types,
           primaryType: 'BurnIntent' as const,
-          message: messageForSigning,
+          message: typedData.message,
         };
         
-        console.log('Calling walletClient.signTypedData...');
+        console.log('Attempting to trigger MetaMask signature dialog...');
         
-        try {
-          // Try signing with a timeout
-          const signPromise = walletClient.signTypedData(signatureRequest as any);
-          const timeoutPromise = new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Signature timeout after 30 seconds')), 30000);
-          });
-          
-          signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
-          console.log('✅ Signature received successfully:', signature);
-          
-        } catch (timeoutError: any) {
-          console.error('Signature attempt failed:', timeoutError);
-          throw timeoutError;
-        }
+        // Call signTypedData directly without modifications
+        // The wallet will handle BigInt serialization internally
+        signature = await walletClient.signTypedData(signatureRequest as any);
         
+        console.log('✅ Signature received successfully:', signature);
       } catch (signError: any) {
-        console.error('Error signing burn intent:', signError);
-        toast.dismiss(toastId);
-        if (signError?.message?.includes('timeout')) {
-          toast.error('Wallet signature timeout - please check your wallet and try again');
-          throw new Error('Wallet signature timeout');
+        console.error('Signature error details:', signError);
+        
+        // If BigInt error, retry with string conversion
+        if (signError.message?.includes('BigInt') || signError.message?.includes('serialize')) {
+          console.log('BigInt serialization issue detected, retrying with strings...');
+          toast.loading('Step 2/4: Retrying signature with different format...', { id: toastId });
+          
+          // Convert all BigInt values to hex strings for MetaMask
+          const messageWithStrings = JSON.parse(JSON.stringify(typedData.message, (key, value) => {
+            if (typeof value === 'bigint') {
+              // Convert BigInt to hex string for EIP-712
+              return '0x' + value.toString(16);
+            }
+            return value;
+          }));
+          
+          const retryRequest = {
+            account: address as Address,
+            domain: typedData.domain,
+            types: typedData.types,
+            primaryType: 'BurnIntent' as const,
+            message: messageWithStrings,
+          };
+          
+          try {
+            signature = await walletClient.signTypedData(retryRequest as any);
+            console.log('✅ Signature received after retry:', signature);
+          } catch (retryError: any) {
+            console.error('Retry also failed:', retryError);
+            toast.dismiss(toastId);
+            if (retryError?.message?.includes('User rejected') || retryError?.message?.includes('User denied')) {
+              toast.error('Transaction cancelled by user');
+              throw new Error('Transaction cancelled by user');
+            }
+            toast.error(`Failed to sign: ${retryError?.message || 'Unknown error'}`);
+            throw new Error(`Failed to sign transaction: ${retryError?.message || 'Unknown error'}`);
+          }
+        } else {
+          // Handle other errors
+          toast.dismiss(toastId);
+          if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
+            toast.error('Transaction cancelled by user');
+            throw new Error('Transaction cancelled by user');
+          }
+          toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
+          throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
         }
-        if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
-          toast.error('Transaction cancelled by user');
-          throw new Error('Transaction cancelled by user');
-        }
-        toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
-        throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
       }
 
       // Step 3: Get attestation from Gateway API
