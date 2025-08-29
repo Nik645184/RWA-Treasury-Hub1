@@ -443,24 +443,65 @@ const CircleGatewayLive = () => {
 
   const handleConnect = async (connectorId?: string) => {
     try {
-      const walletConnectConnector = connectors.find(c => c.id === 'walletConnect' || c.id === 'com.walletconnect');
-      const injectedConnector = connectors.find(c => c.id === 'injected' || c.id === 'com.injected');
+      console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
+      
+      const injectedConnector = connectors.find(c => 
+        c.id === 'injected' || 
+        c.id === 'com.metamask' || 
+        c.id === 'io.metamask' ||
+        c.id === 'metaMask'
+      );
+      const walletConnectConnector = connectors.find(c => 
+        c.id === 'walletConnect' || 
+        c.id === 'com.walletconnect' ||
+        c.id === 'walletconnect'
+      );
       
       let selectedConnector;
       
-      if (connectorId === 'walletConnect') {
+      if (connectorId === 'walletConnect' && walletConnectConnector) {
         selectedConnector = walletConnectConnector;
       } else if (window.ethereum && injectedConnector) {
         selectedConnector = injectedConnector;
-      } else if (walletConnectConnector) {
-        selectedConnector = walletConnectConnector;
+      } else if (connectors[0]) {
+        // Fallback to first available connector
+        selectedConnector = connectors[0];
       }
       
       if (selectedConnector) {
-        await connect({ connector: selectedConnector });
+        console.log('Connecting with:', selectedConnector.name, selectedConnector.id);
+        
+        // Add timeout for connection
+        const connectPromise = connect({ connector: selectedConnector });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 15000)
+        );
+        
+        await Promise.race([connectPromise, timeoutPromise]);
+        console.log('Successfully connected!');
+      } else {
+        console.error('No connector available');
+        toast({
+          title: "Connection Error",
+          description: "No wallet connector available. Please install MetaMask.",
+          variant: "destructive"
+        });
       }
     } catch (error: any) {
       console.error('Connection error:', error);
+      if (error.message === 'Connection timeout') {
+        toast({
+          title: "Connection Timeout",
+          description: "Wallet connection timed out. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: error?.message || "Failed to connect wallet",
+          variant: "destructive"
+        });
+      }
     }
   };
 
