@@ -480,7 +480,22 @@ const CircleGatewayLive = () => {
   };
 
   const handleTransfer = async () => {
-    if (!amount) return;
+    if (!amount) {
+      toast({
+        title: "Missing Amount",
+        description: "Please enter an amount to transfer",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log('handleTransfer called with:', {
+      amount,
+      fromChain,
+      toChain,
+      isConnected,
+      address
+    });
     
     // Use fromChain selected in UI, not current chain
     const fromDomain = chains.find(c => c.id === fromChain)?.domain;
@@ -507,15 +522,26 @@ const CircleGatewayLive = () => {
       toDomain
     });
     
-    const txHash = await transferCrossChain(amount, fromDomain, toDomain, toChain);
-    if (txHash && typeof txHash === 'string') {
-      setMintTxHash(txHash);
-      setMintStatus('Transfer complete! USDC has been minted on destination chain.');
-    } else {
+    try {
+      const txHash = await transferCrossChain(amount, fromDomain, toDomain, toChain);
+      if (txHash && typeof txHash === 'string') {
+        setMintTxHash(txHash);
+        setMintStatus('Transfer complete! USDC has been minted on destination chain.');
+      } else {
+        setMintStatus(null);
+        setMintTxHash(null);
+      }
+      setAmount('');
+    } catch (error: any) {
+      console.error('Transfer failed:', error);
       setMintStatus(null);
       setMintTxHash(null);
+      toast({
+        title: "Transfer Failed",
+        description: error?.message || "Failed to complete transfer",
+        variant: "destructive"
+      });
     }
-    setAmount('');
   };
 
   const formatAddress = (addr: string) => {

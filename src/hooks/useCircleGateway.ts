@@ -238,8 +238,28 @@ export function useCircleGateway() {
     destinationDomain: number,
     destinationChainId: number,
   ) => {
-    if (!address || !walletClient || !usdcAddress) {
-      toast.error('Please connect your wallet and select a network');
+    console.log('Starting transferCrossChain with params:', {
+      amount,
+      sourceDomain,
+      destinationDomain,
+      destinationChainId,
+      address,
+      hasWalletClient: !!walletClient,
+      usdcAddress
+    });
+    
+    if (!address) {
+      toast.error('Please connect your wallet first');
+      return;
+    }
+    
+    if (!walletClient) {
+      toast.error('Wallet client not available. Please reconnect your wallet.');
+      return;
+    }
+    
+    if (!usdcAddress) {
+      toast.error('USDC address not found for current network');
       return;
     }
 
