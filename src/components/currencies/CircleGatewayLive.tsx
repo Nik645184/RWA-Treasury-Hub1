@@ -38,7 +38,6 @@ import {
   ArrowUpDown,
   Bell,
 } from 'lucide-react';
-import TestSignature from './TestSignature';
 
 // Chain configurations
 const chains = [
@@ -442,46 +441,22 @@ const CircleGatewayLive = () => {
     }
   };
 
-  const handleConnect = async (connectorId?: string) => {
+  const handleConnect = async () => {
     try {
+      console.log('Starting wallet connection...');
       console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
       
-      const injectedConnector = connectors.find(c => 
-        c.id === 'injected' || 
-        c.id === 'com.metamask' || 
-        c.id === 'io.metamask' ||
-        c.id === 'metaMask'
-      );
-      const walletConnectConnector = connectors.find(c => 
-        c.id === 'walletConnect' || 
-        c.id === 'com.walletconnect' ||
-        c.id === 'walletconnect'
-      );
+      // Prefer injected connector (MetaMask) if available
+      const injectedConnector = connectors.find(c => c.id === 'injected');
       
-      let selectedConnector;
-      
-      if (connectorId === 'walletConnect' && walletConnectConnector) {
-        selectedConnector = walletConnectConnector;
-      } else if (window.ethereum && injectedConnector) {
-        selectedConnector = injectedConnector;
-      } else if (connectors[0]) {
-        // Fallback to first available connector
-        selectedConnector = connectors[0];
-      }
-      
-      if (selectedConnector) {
-        console.log('Connecting with:', selectedConnector.name, selectedConnector.id);
-        
-        // Add timeout for connection
-        const connectPromise = connect({ connector: selectedConnector });
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout')), 15000)
-        );
-        
-        await Promise.race([connectPromise, timeoutPromise]);
-        console.log('Successfully connected!');
+      if (injectedConnector) {
+        console.log('Using injected connector:', injectedConnector.name);
+        await connect({ connector: injectedConnector });
+      } else if (connectors.length > 0) {
+        console.log('Using first available connector:', connectors[0].name);
+        await connect({ connector: connectors[0] });
       } else {
-        console.error('No connector available');
+        console.error('No connectors available');
         toast({
           title: "Connection Error",
           description: "No wallet connector available. Please install MetaMask.",
@@ -490,19 +465,11 @@ const CircleGatewayLive = () => {
       }
     } catch (error: any) {
       console.error('Connection error:', error);
-      if (error.message === 'Connection timeout') {
-        toast({
-          title: "Connection Timeout",
-          description: "Wallet connection timed out. Please try again.",
-          variant: "destructive"
-        });
-      } else {
-        toast({
-          title: "Connection Failed",
-          description: error?.message || "Failed to connect wallet",
-          variant: "destructive"
-        });
-      }
+      toast({
+        title: "Connection Failed",
+        description: error?.message || "Failed to connect wallet",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1228,8 +1195,6 @@ const CircleGatewayLive = () => {
             </CardContent>
           </Card>
           
-          {/* Add Test Signature Component for debugging */}
-          <TestSignature />
         </>
       )}
     </div>
