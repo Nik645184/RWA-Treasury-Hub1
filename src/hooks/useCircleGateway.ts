@@ -320,29 +320,37 @@ export function useCircleGateway() {
           account: address,
           domain: typedData.domain,
           primaryType: typedData.primaryType,
-          message: typedData.message
         });
+        
+        // Prepare the message with numeric types for wallet signing
+        // The wallet expects numeric values, not strings
+        const messageForWallet = {
+          maxBlockHeight: typedData.message.maxBlockHeight,
+          maxFee: typedData.message.maxFee,
+          spec: {
+            ...typedData.message.spec,
+            value: typedData.message.spec.value,
+          }
+        };
         
         // Ensure we're passing the correct types structure
         const signatureRequest = {
           account: address as Address,
           domain: typedData.domain,
-          types: {
-            EIP712Domain: [
-              { name: 'name', type: 'string' },
-              { name: 'version', type: 'string' },
-            ],
-            TransferSpec: typedData.types.TransferSpec,
-            BurnIntent: typedData.types.BurnIntent,
-          },
+          types: typedData.types,
           primaryType: 'BurnIntent' as const,
-          message: typedData.message,
+          message: messageForWallet,
         };
         
-        console.log('Signature request:', JSON.stringify(signatureRequest, null, 2));
+        console.log('Signature request prepared');
         
-        // Request signature with simplified approach
-        signature = await walletClient.signTypedData(signatureRequest as any);
+        // Request signature with timeout
+        const signPromise = walletClient.signTypedData(signatureRequest as any);
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Wallet signature timeout')), 30000)
+        );
+        
+        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
         console.log('Signature received:', signature);
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);

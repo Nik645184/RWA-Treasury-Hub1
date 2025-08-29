@@ -112,19 +112,16 @@ export function createBurnIntent({
 }
 
 export function burnIntentTypedData(burnIntent: ReturnType<typeof createBurnIntent>) {
-  // Convert all BigInt values to strings for proper serialization
+  // Return typed data with BigInt values for wallet signing
   return {
     types: { EIP712Domain, TransferSpec, BurnIntent },
     domain,
     primaryType: 'BurnIntent' as const,
     message: {
-      // Convert BigInt values to string to avoid serialization issues
-      maxBlockHeight: burnIntent.maxBlockHeight.toString(),
-      maxFee: burnIntent.maxFee.toString(),
+      // Keep BigInt values for wallet signing
+      ...burnIntent,
       spec: {
         ...burnIntent.spec,
-        // Convert value to string for signing
-        value: burnIntent.spec.value.toString(),
         sourceContract: addressToBytes32(burnIntent.spec.sourceContract),
         destinationContract: addressToBytes32(burnIntent.spec.destinationContract),
         sourceToken: addressToBytes32(burnIntent.spec.sourceToken),
