@@ -140,11 +140,40 @@ export function useCircleGateway() {
       refetchUsdcBalance?.();
       refetchGatewayBalance?.();
       
-      // Refresh unified balances after a delay (for chain finality)
-      setTimeout(() => {
-        getUnifiedBalance().then(balances => {
-          if (balances) setUnifiedBalances(balances);
+      // Update unified balances immediately with optimistic update
+      if (address && chain) {
+        // Get domain for current chain
+        let currentDomain = 0; // Default to Ethereum
+        if (chain.id === 1 || chain.id === 11155111) currentDomain = 0; // Ethereum
+        else if (chain.id === 8453 || chain.id === 84532) currentDomain = 6; // Base
+        else if (chain.id === 43113 || chain.id === 43114) currentDomain = 1; // Avalanche
+        else if (chain.id === 421614 || chain.id === 42161) currentDomain = 3; // Arbitrum
+        
+        setUnifiedBalances(prev => {
+          const updated = [...prev];
+          const chainIndex = updated.findIndex(b => b.domain === currentDomain);
+          if (chainIndex >= 0) {
+            // Update existing balance
+            updated[chainIndex] = {
+              ...updated[chainIndex],
+              balance: (parseFloat(updated[chainIndex].balance) + parseFloat(amount)).toFixed(6)
+            };
+          } else {
+            // Add new balance entry
+            updated.push({
+              domain: currentDomain,
+              depositor: address,
+              balance: amount
+            });
+          }
+          return updated;
         });
+      }
+      
+      // Refresh from API after a delay (for chain finality)
+      setTimeout(async () => {
+        const balances = await getUnifiedBalance();
+        if (balances) setUnifiedBalances(balances);
         refetchGatewayBalance?.();
       }, 5000);
       
