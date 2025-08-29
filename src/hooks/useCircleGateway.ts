@@ -316,45 +316,43 @@ export function useCircleGateway() {
       
       let signature: `0x${string}`;
       try {
-        console.log('Requesting signature from wallet...', {
-          account: address,
-          domain: typedData.domain,
-          primaryType: typedData.primaryType,
-        });
+        console.log('Requesting signature from wallet...');
         
-        // For wallet signing, we need to use the original message with BigInt values
-        // The signTypedData method will handle the serialization internally
+        // Create a helper function to convert addresses to bytes32
+        const addressToBytes32 = (address: string): `0x${string}` => {
+          return ('0x' + address.toLowerCase().slice(2).padStart(64, '0')) as `0x${string}`;
+        };
+        
+        // Convert the message for MetaMask with proper formatting
+        const messageForSigning = {
+          maxBlockHeight: typedData.message.maxBlockHeight.toString(),
+          maxFee: typedData.message.maxFee.toString(),
+          spec: {
+            ...typedData.message.spec,
+            value: typedData.message.spec.value.toString(),
+            // Ensure all addresses are properly formatted as bytes32
+            sourceContract: addressToBytes32(typedData.message.spec.sourceContract),
+            destinationContract: addressToBytes32(typedData.message.spec.destinationContract),
+            sourceToken: addressToBytes32(typedData.message.spec.sourceToken),
+            destinationToken: addressToBytes32(typedData.message.spec.destinationToken),
+            sourceDepositor: addressToBytes32(typedData.message.spec.sourceDepositor),
+            destinationRecipient: addressToBytes32(typedData.message.spec.destinationRecipient),
+            sourceSigner: addressToBytes32(typedData.message.spec.sourceSigner),
+            destinationCaller: addressToBytes32(typedData.message.spec.destinationCaller),
+          }
+        };
+        
         const signatureRequest = {
           account: address as Address,
           domain: typedData.domain,
           types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
+          primaryType: 'BurnIntent' as const,
+          message: messageForSigning,
         };
         
-        console.log('Triggering MetaMask signature request...');
-        
-        // Request signature directly without timeout to see if MetaMask shows prompt
-        try {
-          signature = await walletClient.signTypedData(signatureRequest as any);
-          console.log('Signature received:', signature);
-        } catch (innerError: any) {
-          console.error('Direct signature error:', innerError);
-          // Check if it's a BigInt serialization issue
-          if (innerError.message?.includes('BigInt')) {
-            console.log('BigInt issue detected, retrying with string conversion...');
-            // Retry with string conversion for the message
-            const stringifiedMessage = JSON.parse(JSON.stringify(typedData.message, (key, value) =>
-              typeof value === 'bigint' ? value.toString() : value
-            ));
-            signature = await walletClient.signTypedData({
-              ...signatureRequest,
-              message: stringifiedMessage,
-            } as any);
-          } else {
-            throw innerError;
-          }
-        }
+        console.log('Calling signTypedData with properly formatted message...');
+        signature = await walletClient.signTypedData(signatureRequest as any);
+        console.log('Signature received:', signature);
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);
         toast.dismiss(toastId);
