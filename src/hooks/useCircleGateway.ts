@@ -322,36 +322,39 @@ export function useCircleGateway() {
           primaryType: typedData.primaryType,
         });
         
-        // Prepare the message with numeric types for wallet signing
-        // The wallet expects numeric values, not strings
-        const messageForWallet = {
-          maxBlockHeight: typedData.message.maxBlockHeight,
-          maxFee: typedData.message.maxFee,
-          spec: {
-            ...typedData.message.spec,
-            value: typedData.message.spec.value,
-          }
-        };
-        
-        // Ensure we're passing the correct types structure
+        // For wallet signing, we need to use the original message with BigInt values
+        // The signTypedData method will handle the serialization internally
         const signatureRequest = {
           account: address as Address,
           domain: typedData.domain,
           types: typedData.types,
-          primaryType: 'BurnIntent' as const,
-          message: messageForWallet,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
         };
         
-        console.log('Signature request prepared');
+        console.log('Triggering MetaMask signature request...');
         
-        // Request signature with timeout
-        const signPromise = walletClient.signTypedData(signatureRequest as any);
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Wallet signature timeout')), 30000)
-        );
-        
-        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
-        console.log('Signature received:', signature);
+        // Request signature directly without timeout to see if MetaMask shows prompt
+        try {
+          signature = await walletClient.signTypedData(signatureRequest as any);
+          console.log('Signature received:', signature);
+        } catch (innerError: any) {
+          console.error('Direct signature error:', innerError);
+          // Check if it's a BigInt serialization issue
+          if (innerError.message?.includes('BigInt')) {
+            console.log('BigInt issue detected, retrying with string conversion...');
+            // Retry with string conversion for the message
+            const stringifiedMessage = JSON.parse(JSON.stringify(typedData.message, (key, value) =>
+              typeof value === 'bigint' ? value.toString() : value
+            ));
+            signature = await walletClient.signTypedData({
+              ...signatureRequest,
+              message: stringifiedMessage,
+            } as any);
+          } else {
+            throw innerError;
+          }
+        }
       } catch (signError: any) {
         console.error('Error signing burn intent:', signError);
         toast.dismiss(toastId);
