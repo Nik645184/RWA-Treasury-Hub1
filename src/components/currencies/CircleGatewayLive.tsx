@@ -54,7 +54,7 @@ const chains = [
 const CircleGatewayLive = () => {
   const { address, isConnected } = useAccount();
   const { connect, connectors, error: connectError, isPending } = useConnect();
-  const { disconnect } = useDisconnect();
+  const { disconnectAsync } = useDisconnect();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
   
@@ -600,7 +600,13 @@ const CircleGatewayLive = () => {
               </div>
               
               <Button
-                onClick={() => disconnect()}
+                onClick={async () => {
+                  try {
+                    await disconnectAsync();
+                  } catch (error) {
+                    console.error('Disconnect error:', error);
+                  }
+                }}
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-2"
