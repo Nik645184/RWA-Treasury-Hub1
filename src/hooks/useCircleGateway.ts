@@ -143,8 +143,9 @@ export function useCircleGateway() {
     sourceDomain: number,
     destinationDomain: number,
     destinationChainId: number,
+    sourceChainId: number,
   ) => {
-    if (!address || !walletClient || !usdcAddress) {
+    if (!address || !walletClient) {
       toast.error('Please connect your wallet and select a network');
       return;
     }
@@ -153,7 +154,12 @@ export function useCircleGateway() {
     const toastId = toast.loading('Step 1/4: Creating burn intent...');
 
     try {
+      const sourceUsdcAddress = getUsdcAddress(sourceChainId);
       const destUsdcAddress = getUsdcAddress(destinationChainId);
+      
+      if (!sourceUsdcAddress) {
+        throw new Error('USDC not supported on source chain');
+      }
       if (!destUsdcAddress) {
         throw new Error('USDC not supported on destination chain');
       }
@@ -164,7 +170,7 @@ export function useCircleGateway() {
         destinationDomain,
         sourceContract: gatewayWalletAddress,
         destinationContract: gatewayMinterAddress,
-        sourceToken: usdcAddress,
+        sourceToken: sourceUsdcAddress,
         destinationToken: destUsdcAddress,
         sourceDepositor: address,
         destinationRecipient: address,

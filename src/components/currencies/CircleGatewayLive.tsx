@@ -132,8 +132,8 @@ const CircleGatewayLive = () => {
     if (!amount) return;
     const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
     const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-    // Pass the destination chain ID as the 4th parameter
-    await transferCrossChain(amount, fromDomain, toDomain, toChain);
+    // Pass both source and destination chain IDs
+    await transferCrossChain(amount, fromDomain, toDomain, toChain, fromChain);
     setAmount('');
   };
 
