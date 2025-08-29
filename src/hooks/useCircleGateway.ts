@@ -120,12 +120,8 @@ export function useCircleGateway() {
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
-      // Refresh balances after a delay (for chain finality)
-      setTimeout(() => {
-        getUnifiedBalance().then(balances => {
-          if (balances) setUnifiedBalances(balances);
-        });
-      }, 5000);
+      // Start polling for balance updates (chain finality can take 15-20 min)
+      toast.info('Balance will update after chain finality (~15-20 minutes)', { duration: 10000 });
       
       return true;
     } catch (error: any) {
@@ -236,12 +232,8 @@ export function useCircleGateway() {
       
       toast.success(`Successfully transferred ${amount} USDC cross-chain!`, { id: toastId });
       
-      // Refresh balances
-      setTimeout(() => {
-        getUnifiedBalance().then(balances => {
-          if (balances) setUnifiedBalances(balances);
-        });
-      }, 5000);
+      // Note about balance updates
+      toast.info('Balance will update after chain finality (~15-20 minutes)', { duration: 10000 });
       
       return true;
     } catch (error: any) {
