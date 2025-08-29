@@ -358,10 +358,14 @@ const CircleGatewayLive = () => {
                   <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
                     <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                       <Shield className="h-3 w-3" />
-                      Gateway Balance
+                      Gateway Balance (Unified)
                     </p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-400">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
-                    <p className="text-xs text-muted-foreground mt-1">Ready for cross-chain</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(2)} USDC
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Current chain: {parseFloat(gatewayBalance).toFixed(2)} USDC
+                    </p>
                   </div>
                 </div>
                 
