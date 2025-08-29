@@ -84,8 +84,8 @@ const CircleGatewayLive = () => {
     };
     
     fetchBalances();
-    // Refresh every 15 seconds
-    const interval = setInterval(fetchBalances, 15000);
+    // Refresh every 30 seconds instead of 15 to avoid rate limiting
+    const interval = setInterval(fetchBalances, 30000);
     return () => clearInterval(interval);
   }, [isConnected, address, getUnifiedBalance, chainId]);
 
