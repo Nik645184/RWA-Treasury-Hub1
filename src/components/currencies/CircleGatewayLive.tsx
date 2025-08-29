@@ -111,9 +111,11 @@ const CircleGatewayLive = () => {
     } catch (error: any) {
       console.error('Connection error:', error);
       
-      // Handle specific error cases
-      if (error?.message?.includes('User rejected')) {
+      // Handle specific error cases silently - user rejection is a normal action
+      if (error?.message?.includes('User rejected') || error?.message?.includes('user rejected')) {
         console.log('User cancelled connection');
+        // Don't show error to user - this is a normal user action
+        return;
       } else if (error?.message?.includes('WalletConnect')) {
         alert('WalletConnect error. Please try again or use MetaMask.');
       } else {

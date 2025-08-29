@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, ArrowRight, CheckCircle2, Download, RefreshCw, Shield, Zap, Clock, DollarSign, Activity, TrendingUp, Filter, ExternalLink, FileText, Settings2, Info } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Download, RefreshCw, Shield, Zap, Clock, DollarSign, Activity, TrendingUp, Filter, ExternalLink, FileText, Settings2, Info, Wallet } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
 import { PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { Link } from 'react-router-dom';
+import { useConnect, useAccount } from 'wagmi';
+import { toast } from 'sonner';
 
 // Full breakdown of all 7 chains with accurate balances
 const chains = [
