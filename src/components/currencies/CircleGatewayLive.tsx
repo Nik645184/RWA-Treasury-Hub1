@@ -614,17 +614,41 @@ const CircleGatewayLive = () => {
                   </p>
                   <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
-                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      Gateway Balance (Unified)
-                    </p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                      {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Available for instant cross-chain transfer
-                    </p>
+                  <div className="space-y-2">
+                    <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        Total Gateway Balance
+                      </p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
+                      </p>
+                    </div>
+                    
+                    {/* Show balance breakdown by chain */}
+                    {unifiedBalances.filter(b => parseFloat(b.balance) > 0).length > 0 && (
+                      <div className="text-xs space-y-1 px-3">
+                        <p className="text-muted-foreground font-medium">By Chain:</p>
+                        {unifiedBalances.filter(b => parseFloat(b.balance) > 0).map(b => {
+                          const chainName = {
+                            0: 'Ethereum',
+                            1: 'Avalanche', 
+                            2: 'Optimism',
+                            3: 'Arbitrum',
+                            6: 'Base',
+                            7: 'Polygon',
+                            10: 'Unichain'
+                          }[b.domain] || `Domain ${b.domain}`;
+                          
+                          return (
+                            <div key={b.domain} className="flex justify-between items-center">
+                              <span className="text-muted-foreground">{chainName}:</span>
+                              <span className="font-mono font-medium">{parseFloat(b.balance).toFixed(6)} USDC</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
               </div>
             </CardContent>
