@@ -102,6 +102,11 @@ const CircleGatewayLive = () => {
     details: string;
   } | null>(null);
 
+  // Store last check timestamps to prevent duplicate executions
+  const [lastAutoSweepCheck, setLastAutoSweepCheck] = useState<Date | null>(null);
+  const [lastRebalanceCheck, setLastRebalanceCheck] = useState<Date | null>(null);
+  const [isExecutingHook, setIsExecutingHook] = useState(false);
+
   // Fetch unified balance when connected
   useEffect(() => {
     const fetchBalances = async () => {
@@ -112,8 +117,10 @@ const CircleGatewayLive = () => {
           setUnifiedBalances(balances);
           setLastRefreshTime(new Date());
           
-          // Check hooks conditions
-          checkHookConditions(balances);
+          // Check hooks conditions only if not currently executing
+          if (!isExecutingHook) {
+            checkHookConditions(balances);
+          }
         }
       }
     };
@@ -121,20 +128,27 @@ const CircleGatewayLive = () => {
     fetchBalances();
     const interval = setInterval(fetchBalances, 30000);
     return () => clearInterval(interval);
-  }, [isConnected, address, getUnifiedBalance, chainId]);
+  }, [isConnected, address, getUnifiedBalance, chainId, isExecutingHook]);
 
-  // Check hook conditions
+  // Check hook conditions with debouncing
   const checkHookConditions = (balances: any[]) => {
+    const now = new Date();
     const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
     
-    // Auto-sweep check
+    // Auto-sweep check (once per minute max)
     if (autoSweepEnabled && totalBalance > autoSweepThreshold[0]) {
-      executeAutoSweep(totalBalance);
+      if (!lastAutoSweepCheck || (now.getTime() - lastAutoSweepCheck.getTime()) > 60000) {
+        setLastAutoSweepCheck(now);
+        executeAutoSweep(totalBalance, balances);
+      }
     }
     
-    // Rebalance check
+    // Rebalance check (once per 5 minutes max)
     if (autoRebalanceEnabled) {
-      checkRebalancing(balances);
+      if (!lastRebalanceCheck || (now.getTime() - lastRebalanceCheck.getTime()) > 300000) {
+        setLastRebalanceCheck(now);
+        checkRebalancing(balances);
+      }
     }
     
     // Low balance alert
@@ -143,47 +157,158 @@ const CircleGatewayLive = () => {
     }
   };
 
-  const executeAutoSweep = async (totalBalance: number) => {
-    setLastHookExecution({
-      type: 'Auto-Sweep',
-      timestamp: new Date(),
-      details: `Swept ${totalBalance.toFixed(2)} USDC to ${chains.find(c => c.id.toString() === autoSweepDestination)?.name}`
-    });
+  const executeAutoSweep = async (totalBalance: number, balances: any[]) => {
+    if (isExecutingHook || !address) return;
     
-    toast({
-      title: "Auto-Sweep Triggered",
-      description: `Moving ${totalBalance.toFixed(2)} USDC to destination chain`,
-    });
+    setIsExecutingHook(true);
+    const destinationChainId = Number(autoSweepDestination);
+    const destinationChain = chains.find(c => c.id === destinationChainId);
     
-    // Trigger webhook if configured
+    if (!destinationChain) {
+      setIsExecutingHook(false);
+      return;
+    }
+
+    try {
+      // Find chains with balance to sweep from
+      const sourceChainsWithBalance = balances.filter(b => 
+        parseFloat(b.balance) > 0 && b.domain !== destinationChain.domain
+      );
+      
+      if (sourceChainsWithBalance.length === 0) {
+        setIsExecutingHook(false);
+        return;
+      }
+
+      // Execute sweep from the first chain with balance
+      const sourceBalance = sourceChainsWithBalance[0];
+      const sourceChain = chains.find(c => c.domain === sourceBalance.domain);
+      
+      if (sourceChain && chainId !== sourceChain.id) {
+        // Need to switch to source chain first
+        await switchChain?.({ chainId: sourceChain.id });
+      }
+      
+      // Execute transfer
+      const sweepAmount = sourceBalance.balance;
+      const txHash = await transferCrossChain(
+        sweepAmount, 
+        sourceBalance.domain, 
+        destinationChain.domain,
+        destinationChainId
+      );
+      
+      if (txHash) {
+        setLastHookExecution({
+          type: 'Auto-Sweep',
+          timestamp: new Date(),
+          details: `Swept ${sweepAmount} USDC from ${sourceChain?.name} to ${destinationChain.name}`
+        });
+        
+        toast({
+          title: "Auto-Sweep Executed",
+          description: `Successfully moved ${sweepAmount} USDC to ${destinationChain.name}`,
+        });
+      }
+    } catch (error) {
+      console.error('Auto-sweep error:', error);
+      toast({
+        title: "Auto-Sweep Failed",
+        description: "Failed to execute auto-sweep transfer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExecutingHook(false);
+    }
+    
+    // Trigger webhook
     if (webhookUrl) {
       triggerWebhook('auto_sweep', { amount: totalBalance, destination: autoSweepDestination });
     }
   };
 
-  const checkRebalancing = (balances: any[]) => {
+  const checkRebalancing = async (balances: any[]) => {
     const totalBalance = balances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
-    const avgBalance = totalBalance / balances.length;
+    const chainsWithBalance = balances.filter(b => parseFloat(b.balance) > 0);
     
-    balances.forEach(balance => {
-      const deviation = Math.abs((parseFloat(balance.balance) - avgBalance) / avgBalance * 100);
-      if (deviation > rebalanceThreshold[0]) {
-        executeRebalancing(balances, avgBalance);
-        return;
-      }
+    if (chainsWithBalance.length < 2) return; // Need at least 2 chains to rebalance
+    
+    const avgBalance = totalBalance / chainsWithBalance.length;
+    
+    // Find chains that need rebalancing
+    const overBalanced = chainsWithBalance.filter(b => {
+      const balance = parseFloat(b.balance);
+      const deviation = Math.abs((balance - avgBalance) / avgBalance * 100);
+      return deviation > rebalanceThreshold[0] && balance > avgBalance;
     });
+    
+    const underBalanced = chainsWithBalance.filter(b => {
+      const balance = parseFloat(b.balance);
+      const deviation = Math.abs((balance - avgBalance) / avgBalance * 100);
+      return deviation > rebalanceThreshold[0] && balance < avgBalance;
+    });
+    
+    if (overBalanced.length > 0 && underBalanced.length > 0) {
+      executeRebalancing(overBalanced[0], underBalanced[0], avgBalance);
+    }
   };
 
-  const executeRebalancing = (balances: any[], target: number) => {
-    setLastHookExecution({
-      type: 'Auto-Rebalance',
-      timestamp: new Date(),
-      details: `Rebalancing chains to ~${target.toFixed(2)} USDC each`
-    });
+  const executeRebalancing = async (fromBalance: any, toBalance: any, target: number) => {
+    if (isExecutingHook || !address) return;
     
+    setIsExecutingHook(true);
+    
+    try {
+      const fromChain = chains.find(c => c.domain === fromBalance.domain);
+      const toChain = chains.find(c => c.domain === toBalance.domain);
+      
+      if (!fromChain || !toChain) {
+        setIsExecutingHook(false);
+        return;
+      }
+      
+      // Calculate amount to transfer
+      const fromCurrentBalance = parseFloat(fromBalance.balance);
+      const transferAmount = (fromCurrentBalance - target).toFixed(2);
+      
+      // Switch to source chain if needed
+      if (chainId !== fromChain.id) {
+        await switchChain?.({ chainId: fromChain.id });
+      }
+      
+      // Execute rebalancing transfer
+      const txHash = await transferCrossChain(
+        transferAmount,
+        fromChain.domain,
+        toChain.domain,
+        toChain.id
+      );
+      
+      if (txHash) {
+        setLastHookExecution({
+          type: 'Auto-Rebalance',
+          timestamp: new Date(),
+          details: `Rebalanced ${transferAmount} USDC from ${fromChain.name} to ${toChain.name}`
+        });
+        
+        toast({
+          title: "Auto-Rebalance Executed",
+          description: `Moved ${transferAmount} USDC to balance chains`,
+        });
+      }
+    } catch (error) {
+      console.error('Rebalancing error:', error);
+      toast({
+        title: "Rebalancing Failed",
+        description: "Failed to execute rebalancing transfer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExecutingHook(false);
+    }
     
     if (webhookUrl) {
-      triggerWebhook('auto_rebalance', { balances, target });
+      triggerWebhook('auto_rebalance', { from: fromBalance, to: toBalance, target });
     }
   };
 
@@ -218,19 +343,62 @@ const CircleGatewayLive = () => {
     }
   };
 
-  const executeScheduledTransfer = () => {
-    if (!scheduledTransferEnabled) return;
+  const executeScheduledTransfer = async () => {
+    if (!scheduledTransferEnabled || !scheduledAmount || isExecutingHook) return;
     
-    setLastHookExecution({
-      type: 'Scheduled Transfer',
-      timestamp: new Date(),
-      details: `Transferred ${scheduledAmount} USDC (${scheduledFrequency})`
-    });
+    setIsExecutingHook(true);
+    const destinationChainId = Number(scheduledDestination);
+    const destinationChain = chains.find(c => c.id === destinationChainId);
     
-    toast({
-      title: "Scheduled Transfer Executed",
-      description: `${scheduledAmount} USDC transferred to ${chains.find(c => c.id.toString() === scheduledDestination)?.name}`,
-    });
+    if (!destinationChain) {
+      setIsExecutingHook(false);
+      return;
+    }
+    
+    try {
+      // Get current chain domain
+      const currentChainDomain = chains.find(c => c.id === chainId)?.domain;
+      
+      if (currentChainDomain === undefined) {
+        toast({
+          title: "Scheduled Transfer Failed",
+          description: "Please switch to a supported network",
+          variant: "destructive",
+        });
+        setIsExecutingHook(false);
+        return;
+      }
+      
+      // Execute scheduled transfer
+      const txHash = await transferCrossChain(
+        scheduledAmount,
+        currentChainDomain,
+        destinationChain.domain,
+        destinationChainId
+      );
+      
+      if (txHash) {
+        setLastHookExecution({
+          type: 'Scheduled Transfer',
+          timestamp: new Date(),
+          details: `Transferred ${scheduledAmount} USDC to ${destinationChain.name} (${scheduledFrequency})`
+        });
+        
+        toast({
+          title: "Scheduled Transfer Executed",
+          description: `${scheduledAmount} USDC transferred to ${destinationChain.name}`,
+        });
+      }
+    } catch (error) {
+      console.error('Scheduled transfer error:', error);
+      toast({
+        title: "Scheduled Transfer Failed",
+        description: "Failed to execute scheduled transfer",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExecutingHook(false);
+    }
     
     if (webhookUrl) {
       triggerWebhook('scheduled_transfer', { 
