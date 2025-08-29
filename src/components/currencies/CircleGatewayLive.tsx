@@ -935,21 +935,21 @@ const CircleGatewayLive = () => {
                       />
                     </div>
 
-                    {/* Show pending deposit info if exists */}
-                    {chainId === 1 && unifiedBalances.find(b => b.domain === 0)?.balance === "1.999950" && (
-                      <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/30">
-                        <AlertCircle className="h-4 w-4 text-amber-600" />
-                        <AlertTitle>Deposit Pending Finalization</AlertTitle>
+                    {/* Show finality notice for Base and Ethereum L2s */}
+                    {chainId === 8453 && (
+                      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
+                        <AlertCircle className="h-4 w-4 text-blue-600" />
+                        <AlertTitle>Base Finality Information</AlertTitle>
                         <AlertDescription>
-                          <div className="mt-2 space-y-2">
-                            <p>Your recent deposit is being processed on Ethereum mainnet.</p>
-                            <ul className="text-sm space-y-1">
-                              <li>✅ Transaction confirmed</li>
-                              <li>⏳ Waiting for finality (~13-19 minutes)</li>
-                              <li>📊 Current Gateway balance will update automatically</li>
+                          <div className="mt-2 space-y-2 text-sm">
+                            <p>Base transactions are confirmed quickly, but Circle Gateway requires Ethereum L1 finality:</p>
+                            <ul className="space-y-1 ml-4">
+                              <li>• Base confirmation: ~2-4 seconds ✅</li>
+                              <li>• L1 finality required: ~13-19 minutes ⏳</li>
+                              <li>• Your USDC is safe and will appear automatically</li>
                             </ul>
-                            <p className="text-xs mt-2">
-                              Ethereum requires ~65 block confirmations for finality
+                            <p className="text-xs opacity-80 mt-2">
+                              This is standard for all Ethereum L2s to ensure maximum security
                             </p>
                           </div>
                         </AlertDescription>

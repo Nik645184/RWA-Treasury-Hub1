@@ -148,30 +148,54 @@ export function useCircleGateway() {
       
       // Track pending deposit
       const pendingKey = `pending-${currentDomain}-${Date.now()}`;
-      toast.loading(`Deposit pending finalization on ${chain?.name}. Base requires ~13-19 minutes for finality.`, { 
+      
+      // Base has fast finality but Gateway still requires L1 finality
+      const finalityTime = currentDomain === 6 ? "13-19 minutes (waiting for Ethereum L1 finality)" : "a few minutes";
+      
+      toast.loading(`✅ Deposit transaction confirmed on ${chain?.name}! Waiting for Circle Gateway finalization (${finalityTime})...`, { 
         id: pendingKey,
-        duration: 180000 // Show for 3 minutes
+        duration: 300000 // Show for 5 minutes
       });
       
-      // Schedule additional checks for finality  
-      const checkIntervals = [5000, 15000, 30000, 60000, 120000, 180000, 300000, 600000, 900000]; // up to 15 minutes
+      // Start aggressive polling immediately for Base
+      const checkIntervals = [
+        1000, 2000, 3000, 5000, 8000, // First 5 checks in 8 seconds
+        15000, 30000, 45000, 60000,    // Then every 15-60 seconds
+        90000, 120000, 180000, 240000, // Then less frequently
+        300000, 420000, 540000, 660000, 780000, 900000 // up to 15 minutes
+      ];
+      
+      let foundUpdate = false;
       checkIntervals.forEach(delay => {
         setTimeout(async () => {
+          if (foundUpdate) return; // Stop checking once found
+          
           const balances = await getUnifiedBalance();
           if (balances) {
+            console.log(`Balance check at ${delay/1000}s:`, balances);
             setUnifiedBalances(balances);
             
             // Check if deposit is now visible on the specific chain
             const chainBalance = balances.find((b: any) => b.domain === currentDomain);
-            const previousBalance = unifiedBalances.find((b: any) => b.domain === currentDomain);
-            const previousAmount = previousBalance ? parseFloat(previousBalance.balance) : 0;
             const currentAmount = chainBalance ? parseFloat(chainBalance.balance) : 0;
             
+            // For the initial deposit, any amount > 0 is an update
+            // For subsequent deposits, check against previous balance
+            const previousBalance = unifiedBalances.find((b: any) => b.domain === currentDomain);
+            const previousAmount = previousBalance ? parseFloat(previousBalance.balance) : 0;
+            
             if (currentAmount > previousAmount) {
+              foundUpdate = true;
               toast.dismiss(pendingKey);
-              toast.success(`✅ Gateway balance updated on ${chain?.name}: ${currentAmount.toFixed(6)} USDC (+ ${(currentAmount - previousAmount).toFixed(6)} USDC)`, { 
+              toast.success(`✅ Gateway balance updated! ${chain?.name}: ${currentAmount.toFixed(6)} USDC (+ ${(currentAmount - previousAmount).toFixed(6)} USDC)`, { 
                 id: 'balance-refresh',
-                duration: 5000 
+                duration: 8000 
+              });
+            } else if (delay >= 60000 && !foundUpdate) {
+              // After 1 minute, show status update
+              toast.loading(`Still waiting for Gateway finalization on ${chain?.name}. Current status: Transaction confirmed, awaiting L1 finality...`, {
+                id: pendingKey,
+                duration: 180000
               });
             }
           }
