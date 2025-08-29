@@ -73,43 +73,20 @@ export class GatewayClient {
   // Check balances for a given depositor
   async balances(token: string, depositor: string, domains?: number[]): Promise<BalanceResponse> {
     if (!domains) {
-      // Include all supported domains based on environment
-      if (this.apiUrl.includes('testnet')) {
-        domains = [0, 1, 6]; // Ethereum Sepolia, Avalanche Fuji, Base Sepolia
-      } else {
-        domains = [0, 1, 2, 3, 6, 7, 10]; // All mainnet supported domains
-      }
+      // Only include supported domains (not Arbitrum for testnet)
+      domains = [0, 1, 6]; // Ethereum, Avalanche, Base
     }
     
-    try {
-      console.log('Fetching balances from:', this.apiUrl);
-      const response = await fetch(`${this.apiUrl}/balances`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          sources: domains.map((domain) => ({ depositor, domain })),
-        }),
-      });
-      
-      if (!response.ok) {
-        console.error('Gateway API error:', response.status, response.statusText);
-        throw new Error(`Gateway API error: ${response.status}`);
-      }
-      
-      return response.json();
-    } catch (error) {
-      console.error('Failed to fetch balances:', error);
-      // Return empty balances on error to prevent app crash
-      return {
+    const response = await fetch(`${this.apiUrl}/balances`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         token,
-        balances: domains.map(domain => ({
-          domain,
-          depositor,
-          balance: '0'
-        }))
-      };
-    }
+        sources: domains.map((domain) => ({ depositor, domain })),
+      }),
+    });
+    
+    return response.json();
   }
 
   // Request transfer attestation

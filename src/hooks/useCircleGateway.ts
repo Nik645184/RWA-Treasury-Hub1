@@ -34,12 +34,11 @@ export function useCircleGateway() {
     hash: txHash,
   });
 
-  // Check if current chain is mainnet - include all mainnet chain IDs
-  const isMainnet = chain ? [1, 8453, 42161, 43114, 10, 137, 110].includes(chain.id) : false;
+  // Check if current chain is mainnet
+  const isMainnet = chain ? [1, 8453].includes(chain.id) : false;
   
-  // Create Gateway client with proper network detection
+  // Create Gateway client
   const gatewayClient = new GatewayClient(isMainnet);
-  console.log('Gateway Client created:', { chainId: chain?.id, isMainnet });
   
   // Get USDC address for current chain
   const usdcAddress = chain ? getUsdcAddress(chain.id) : undefined;
@@ -67,40 +66,16 @@ export function useCircleGateway() {
     ] : undefined,
   });
 
-  // Get unified balance across all chains - define before useEffect
-  const getUnifiedBalance = useCallback(async () => {
-    if (!address) return null;
-
-    try {
-      const response = await gatewayClient.balances('USDC', address);
-      console.log('Unified balances fetched:', response);
-      return response.balances;
-    } catch (error) {
-      console.error('Failed to fetch unified balance:', error);
-      return null;
-    }
-  }, [address, gatewayClient]);
-
-  // Fetch unified balances on address/chain change + auto-refresh
+  // Fetch unified balances on address change
   useEffect(() => {
-    const fetchBalances = async () => {
-      if (address) {
-        const balances = await getUnifiedBalance();
+    if (address) {
+      getUnifiedBalance().then(balances => {
         if (balances) {
-          console.log('Auto-refresh Gateway balances at', new Date().toISOString(), balances);
           setUnifiedBalances(balances);
         }
-      }
-    };
-    
-    // Initial fetch
-    fetchBalances();
-    
-    // Set up auto-refresh every 5 seconds for better UX
-    const interval = setInterval(fetchBalances, 5000);
-    
-    return () => clearInterval(interval);
-  }, [address, chain?.id, getUnifiedBalance]);
+      });
+    }
+  }, [address]);
 
   // Real deposit to Gateway
   const depositToGateway = useCallback(async (amount: string) => {
@@ -142,92 +117,23 @@ export function useCircleGateway() {
       toast.loading('Waiting for deposit confirmation...', { id: toastId });
       await publicClient?.waitForTransactionReceipt({ hash: depositTx });
       
-      // Clear processing state immediately after success
-      setIsProcessing(false);
       setPendingDeposit({ hash: depositTx, amount });
       toast.success(`Successfully deposited ${amount} USDC to Gateway!`, { id: toastId });
       
-      // Immediately try to refresh balances
-      toast.loading('Updating balances...', { id: 'balance-refresh' });
-      
-      // First quick check
-      const quickCheck = await getUnifiedBalance();
-      if (quickCheck) {
-        setUnifiedBalances(quickCheck);
-        toast.dismiss('balance-refresh');
-      }
-      
-      // Get current chain domain - map chainId to domain
-      let currentDomain = 0;
-      if (chain.id === 1 || chain.id === 11155111) currentDomain = 0; // Ethereum/Sepolia
-      else if (chain.id === 43114 || chain.id === 43113) currentDomain = 1; // Avalanche
-      else if (chain.id === 8453 || chain.id === 84532) currentDomain = 6; // Base
-      else if (chain.id === 10) currentDomain = 2; // Optimism
-      else if (chain.id === 42161) currentDomain = 3; // Arbitrum
-      else if (chain.id === 137) currentDomain = 7; // Polygon
-      
-      // Track pending deposit
-      const pendingKey = `pending-${currentDomain}-${Date.now()}`;
-      
-      // Base has fast finality but Gateway still requires L1 finality
-      const finalityTime = currentDomain === 6 ? "13-19 minutes (waiting for Ethereum L1 finality)" : "a few minutes";
-      
-      toast.loading(`✅ Deposit transaction confirmed on ${chain?.name}! Waiting for Circle Gateway finalization (${finalityTime})...`, { 
-        id: pendingKey,
-        duration: 300000 // Show for 5 minutes
-      });
-      
-      // Start aggressive polling immediately for Base
-      const checkIntervals = [
-        1000, 2000, 3000, 5000, 8000, // First 5 checks in 8 seconds
-        15000, 30000, 45000, 60000,    // Then every 15-60 seconds
-        90000, 120000, 180000, 240000, // Then less frequently
-        300000, 420000, 540000, 660000, 780000, 900000 // up to 15 minutes
-      ];
-      
-      let foundUpdate = false;
-      checkIntervals.forEach(delay => {
-        setTimeout(async () => {
-          if (foundUpdate) return; // Stop checking once found
-          
-          const balances = await getUnifiedBalance();
-          if (balances) {
-            console.log(`Balance check at ${delay/1000}s:`, balances);
-            setUnifiedBalances(balances);
-            
-            // Check if deposit is now visible on the specific chain
-            const chainBalance = balances.find((b: any) => b.domain === currentDomain);
-            const currentAmount = chainBalance ? parseFloat(chainBalance.balance) : 0;
-            
-            // For the initial deposit, any amount > 0 is an update
-            // For subsequent deposits, check against previous balance
-            const previousBalance = unifiedBalances.find((b: any) => b.domain === currentDomain);
-            const previousAmount = previousBalance ? parseFloat(previousBalance.balance) : 0;
-            
-            if (currentAmount > previousAmount) {
-              foundUpdate = true;
-              toast.dismiss(pendingKey);
-              toast.success(`✅ Gateway balance updated! ${chain?.name}: ${currentAmount.toFixed(6)} USDC (+ ${(currentAmount - previousAmount).toFixed(6)} USDC)`, { 
-                id: 'balance-refresh',
-                duration: 8000 
-              });
-            } else if (delay >= 60000 && !foundUpdate) {
-              // After 1 minute, show status update
-              toast.loading(`Still waiting for Gateway finalization on ${chain?.name}. Current status: Transaction confirmed, awaiting L1 finality...`, {
-                id: pendingKey,
-                duration: 180000
-              });
-            }
-          }
-        }, delay);
-      });
+      // Refresh balances after a delay (for chain finality)
+      setTimeout(() => {
+        getUnifiedBalance().then(balances => {
+          if (balances) setUnifiedBalances(balances);
+        });
+      }, 5000);
       
       return true;
     } catch (error: any) {
       console.error('Deposit error:', error);
-      setIsProcessing(false);
       toast.error(error?.shortMessage || error?.message || 'Deposit failed', { id: toastId });
-      return false;
+      throw error;
+    } finally {
+      setIsProcessing(false);
     }
   }, [address, chain, usdcAddress, walletClient, publicClient, gatewayWalletAddress]);
 
@@ -244,46 +150,15 @@ export function useCircleGateway() {
     }
 
     setIsProcessing(true);
-    const toastId = toast.loading('Checking Gateway balance...');
+    const toastId = toast.loading('Step 1/4: Creating burn intent...');
 
     try {
-      // Log detailed balance check
-      console.log('Checking balance for transfer:', {
-        address,
-        sourceDomain,
-        amount,
-        isMainnet,
-        gatewayEndpoint: isMainnet ? 'mainnet' : 'testnet'
-      });
-      
-      // First check if we have sufficient balance
-      const balances = await gatewayClient.balances('USDC', address);
-      console.log('Gateway balances response:', balances);
-      
-      const sourceBalance = balances.balances.find(b => b.domain === sourceDomain);
-      const requiredAmount = parseFloat(amount) + 0.01; // Add fee buffer
-      
-      console.log('Balance check:', {
-        sourceBalance,
-        requiredAmount,
-        hasBalance: sourceBalance && parseFloat(sourceBalance.balance) >= requiredAmount
-      });
-      
-      if (!sourceBalance || parseFloat(sourceBalance.balance) < requiredAmount) {
-        const availableBalance = sourceBalance ? sourceBalance.balance : '0';
-        throw new Error(
-          `Insufficient Gateway balance on domain ${sourceDomain}. Available: ${availableBalance} USDC, Required: ${requiredAmount} USDC. ` +
-          `Please wait for block finality (up to 20 minutes on Ethereum) or deposit more USDC.`
-        );
-      }
-
       const destUsdcAddress = getUsdcAddress(destinationChainId);
       if (!destUsdcAddress) {
         throw new Error('USDC not supported on destination chain');
       }
 
-      // Step 1: Create burn intent with proper fee
-      toast.loading('Step 1/4: Creating burn intent...', { id: toastId });
+      // Step 1: Create burn intent
       const burnIntent = createBurnIntent({
         sourceDomain,
         destinationDomain,
@@ -294,14 +169,11 @@ export function useCircleGateway() {
         sourceDepositor: address,
         destinationRecipient: address,
         amount,
-      }, isMainnet); // Pass isMainnet to use proper fees
+      });
 
-      // Step 2: Sign burn intent with better error handling
-      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
-      console.log('Creating typed data for burn intent:', burnIntent);
-      
+      // Step 2: Sign burn intent
+      toast.loading('Step 2/4: Signing burn intent...', { id: toastId });
       const typedData = burnIntentTypedData(burnIntent);
-      console.log('Typed data created:', typedData);
       
       // Convert values to strings for API
       const messageForApi = {
@@ -314,51 +186,20 @@ export function useCircleGateway() {
         }
       };
       
-      let signature: `0x${string}`;
-      try {
-        console.log('Requesting signature from wallet...', {
-          account: address,
-          domain: typedData.domain,
-          primaryType: typedData.primaryType
-        });
-        
-        // Use a timeout for wallet signature
-        const signPromise = walletClient.signTypedData({
-          account: address,
-          domain: typedData.domain as any,
-          primaryType: typedData.primaryType,
-          types: typedData.types,
-          message: typedData.message,
-        });
-        
-        // Add 30 second timeout for signature
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error('Wallet signature timeout - please check your wallet')), 30000)
-        );
-        
-        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
-        console.log('Signature received:', signature);
-      } catch (signError: any) {
-        console.error('Error signing burn intent:', signError);
-        toast.dismiss(toastId);
-        if (signError?.message?.includes('timeout')) {
-          toast.error('Wallet signature timeout - please check your wallet and try again');
-          throw new Error('Wallet signature timeout');
-        }
-        if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
-          toast.error('Transaction cancelled by user');
-          throw new Error('Transaction cancelled by user');
-        }
-        toast.error(`Failed to sign: ${signError?.message || 'Unknown error'}`);
-        throw new Error(`Failed to sign transaction: ${signError?.message || 'Unknown error'}`);
-      }
+      const signature = await walletClient.signTypedData({
+        account: address,
+        domain: typedData.domain as any,
+        primaryType: typedData.primaryType,
+        types: typedData.types,
+        message: typedData.message,
+      });
 
       // Step 3: Get attestation from Gateway API
       toast.loading('Step 3/4: Getting attestation from Circle...', { id: toastId });
-      const transferResponse = await gatewayClient.transfer([{
+      const transferResponse = await gatewayClient.transfer({
         burnIntent: messageForApi,
         signature,
-      }]);
+      });
 
       if (!transferResponse.attestation || transferResponse.success === false) {
         throw new Error(transferResponse.message || 'Failed to get attestation');
@@ -385,44 +226,45 @@ export function useCircleGateway() {
       });
 
       toast.loading('Waiting for mint confirmation...', { id: toastId });
-      
-      // Return mint transaction hash for tracking
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash: mintTx });
+      await publicClient?.waitForTransactionReceipt({ hash: mintTx });
       
       toast.success(`Successfully transferred ${amount} USDC cross-chain!`, { id: toastId });
       
-      // Immediately refresh balances  
-      const quickCheck = await getUnifiedBalance();
-      if (quickCheck) {
-        setUnifiedBalances(quickCheck);
-      }
-      
-      // Schedule additional checks for finality
-      [5000, 15000, 30000].forEach(delay => {
-        setTimeout(async () => {
-          const balances = await getUnifiedBalance();
+      // Refresh balances
+      setTimeout(() => {
+        getUnifiedBalance().then(balances => {
           if (balances) setUnifiedBalances(balances);
-        }, delay);
-      });
+        });
+      }, 5000);
       
-      // Return the mint transaction hash
-      return mintTx;
+      return true;
     } catch (error: any) {
       console.error('Transfer error:', error);
-      toast.error(error?.message || 'Transfer failed', { id: toastId });
-      return false;
+      toast.error(error?.shortMessage || error?.message || 'Transfer failed', { id: toastId });
+      throw error;
     } finally {
       setIsProcessing(false);
     }
-  }, [address, walletClient, chain, usdcAddress, switchChain, publicClient, gatewayWalletAddress, gatewayMinterAddress, gatewayClient]);
+  }, [address, walletClient, chain, usdcAddress, switchChain, publicClient, gatewayWalletAddress, gatewayMinterAddress]);
 
+  // Get unified balance across all chains
+  const getUnifiedBalance = useCallback(async () => {
+    if (!address) return null;
+
+    try {
+      const response = await gatewayClient.balances('USDC', address);
+      return response.balances;
+    } catch (error) {
+      console.error('Failed to fetch unified balance:', error);
+      return null;
+    }
+  }, [address, gatewayClient]);
 
   return {
     address,
     chain,
     usdcBalance: usdcBalance ? formatUnits(usdcBalance, 6) : '0',
     gatewayBalance: gatewayBalance ? formatUnits(gatewayBalance, 6) : '0',
-    unifiedBalances,
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,
