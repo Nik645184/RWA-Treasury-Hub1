@@ -263,7 +263,6 @@ export function useCircleGateway() {
     chain,
     usdcBalance: usdcBalance ? formatUnits(usdcBalance, 6) : '0',
     gatewayBalance: gatewayBalance ? formatUnits(gatewayBalance, 6) : '0',
-    unifiedBalances,
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,

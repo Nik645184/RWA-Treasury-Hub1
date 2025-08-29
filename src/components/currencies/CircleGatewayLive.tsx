@@ -49,7 +49,6 @@ const CircleGatewayLive = () => {
   const {
     usdcBalance,
     gatewayBalance,
-    unifiedBalances: hookUnifiedBalances,
     depositToGateway,
     transferCrossChain,
     getUnifiedBalance,
@@ -85,14 +84,6 @@ const CircleGatewayLive = () => {
       setIsRefreshing(false);
     }
   };
-
-  // Sync unified balances from hook
-  useEffect(() => {
-    if (hookUnifiedBalances && hookUnifiedBalances.length > 0) {
-      setUnifiedBalances(hookUnifiedBalances);
-      setLastRefresh(new Date());
-    }
-  }, [hookUnifiedBalances]);
 
   // Fetch unified balance when connected
   useEffect(() => {
@@ -338,30 +329,14 @@ const CircleGatewayLive = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Wallet USDC (Current Chain)</p>
-                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(6)} USDC</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {currentChain?.name || `Chain ID: ${chainId}`}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-1">USDC Balance</p>
+                  <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
                 <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance (Current Chain)</p>
-                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(6)} USDC</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Available in Gateway on {currentChain?.name || 'this chain'}
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-1">Gateway Balance</p>
+                  <p className="text-lg font-bold">{parseFloat(gatewayBalance).toFixed(2)} USDC</p>
                 </div>
               </div>
-              
-              {/* Network Notice */}
-              {currentChain?.isMainnet && unifiedBalances.length > 0 && (
-                <Alert className="mt-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    You're on mainnet but your Gateway balances below are on testnet. Switch to a testnet to see matching balances.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
           )}
         </CardContent>
