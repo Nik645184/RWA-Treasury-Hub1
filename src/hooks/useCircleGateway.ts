@@ -238,28 +238,8 @@ export function useCircleGateway() {
     destinationDomain: number,
     destinationChainId: number,
   ) => {
-    console.log('Starting transferCrossChain with params:', {
-      amount,
-      sourceDomain,
-      destinationDomain,
-      destinationChainId,
-      address,
-      hasWalletClient: !!walletClient,
-      usdcAddress
-    });
-    
-    if (!address) {
-      toast.error('Please connect your wallet first');
-      return;
-    }
-    
-    if (!walletClient) {
-      toast.error('Wallet client not available. Please reconnect your wallet.');
-      return;
-    }
-    
-    if (!usdcAddress) {
-      toast.error('USDC address not found for current network');
+    if (!address || !walletClient || !usdcAddress) {
+      toast.error('Please connect your wallet and select a network');
       return;
     }
 
@@ -317,86 +297,54 @@ export function useCircleGateway() {
       }, isMainnet); // Pass isMainnet to use proper fees
 
       // Step 2: Sign burn intent with better error handling
-      toast.loading('Step 2/4: Preparing signature request...', { id: toastId });
-      console.log('Creating typed data for burn intent:', JSON.stringify(burnIntent, (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      ));
+      toast.loading('Step 2/4: Waiting for wallet signature...', { id: toastId });
+      console.log('Creating typed data for burn intent:', burnIntent);
       
       const typedData = burnIntentTypedData(burnIntent);
-      console.log('Typed data created, types:', typedData.types);
-      console.log('Domain:', typedData.domain);
+      console.log('Typed data created:', typedData);
       
       // Convert values to strings for API
-      const messageForApi = JSON.parse(JSON.stringify(typedData.message, (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      ));
+      const messageForApi = {
+        ...typedData.message,
+        maxBlockHeight: typedData.message.maxBlockHeight.toString(),
+        maxFee: typedData.message.maxFee.toString(),
+        spec: {
+          ...typedData.message.spec,
+          value: typedData.message.spec.value.toString(),
+        }
+      };
       
       let signature: `0x${string}`;
-      toast.loading('Step 2/4: Preparing signature...', { id: toastId });
-      
       try {
-        console.log('=== SIGNATURE PROCESS START ===');
-        console.log('Wallet client exists:', !!walletClient);
-        console.log('Account address:', address);
-        console.log('TypedData domain:', typedData.domain);
-        console.log('TypedData types:', typedData.types);
-        console.log('TypedData message (raw):', typedData.message);
+        console.log('Requesting signature from wallet...', {
+          account: address,
+          domain: typedData.domain,
+          primaryType: typedData.primaryType
+        });
         
-        // First attempt: Try with raw message (BigInt values)
-        try {
-          console.log('Attempt 1: Trying with raw BigInt values...');
-          
-          const signatureRequest = {
-            account: address as Address,
-            domain: typedData.domain,
-            types: typedData.types,
-            primaryType: 'BurnIntent' as const,
-            message: typedData.message,
-          };
-          
-          console.log('Calling walletClient.signTypedData...');
-          signature = await walletClient.signTypedData(signatureRequest as any);
-          console.log('✅ SUCCESS: Signature received with raw values:', signature);
-          
-        } catch (firstError: any) {
-          console.error('❌ First attempt failed:', firstError.message);
-          
-          // Second attempt: Convert BigInt to strings
-          console.log('Attempt 2: Converting BigInt to strings...');
-          
-          const messageWithStrings = {
-            maxBlockHeight: typedData.message.maxBlockHeight.toString(),
-            maxFee: typedData.message.maxFee.toString(),
-            spec: {
-              ...typedData.message.spec,
-              value: typedData.message.spec.value.toString(),
-            }
-          };
-          
-          console.log('Message with strings:', messageWithStrings);
-          
-          const retryRequest = {
-            account: address as Address,
-            domain: typedData.domain,
-            types: typedData.types,
-            primaryType: 'BurnIntent' as const,
-            message: messageWithStrings,
-          };
-          
-          console.log('Retrying walletClient.signTypedData with strings...');
-          signature = await walletClient.signTypedData(retryRequest as any);
-          console.log('✅ SUCCESS: Signature received with string values:', signature);
-        }
+        // Use a timeout for wallet signature
+        const signPromise = walletClient.signTypedData({
+          account: address,
+          domain: typedData.domain as any,
+          primaryType: typedData.primaryType,
+          types: typedData.types,
+          message: typedData.message,
+        });
         
-        console.log('=== SIGNATURE PROCESS END ===');
+        // Add 30 second timeout for signature
+        const timeoutPromise = new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error('Wallet signature timeout - please check your wallet')), 30000)
+        );
         
+        signature = await Promise.race([signPromise, timeoutPromise]) as `0x${string}`;
+        console.log('Signature received:', signature);
       } catch (signError: any) {
-        console.error('=== SIGNATURE FAILED ===');
-        console.error('Error:', signError);
-        console.error('Error message:', signError?.message);
-        console.error('Error stack:', signError?.stack);
-        
+        console.error('Error signing burn intent:', signError);
         toast.dismiss(toastId);
+        if (signError?.message?.includes('timeout')) {
+          toast.error('Wallet signature timeout - please check your wallet and try again');
+          throw new Error('Wallet signature timeout');
+        }
         if (signError?.message?.includes('User rejected') || signError?.message?.includes('User denied')) {
           toast.error('Transaction cancelled by user');
           throw new Error('Transaction cancelled by user');

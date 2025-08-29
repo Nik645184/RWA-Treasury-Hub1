@@ -1,12 +1,6 @@
 import { pad, zeroAddress, maxUint256, parseUnits, type Address } from 'viem';
 
-// Domain needs chainId and verifyingContract for mainnet
-const domain = { 
-  name: 'GatewayWallet', 
-  version: '1',
-  // Note: Circle Gateway doesn't use chainId or verifyingContract in domain
-  // This is intentional to allow cross-chain signatures
-};
+const domain = { name: 'GatewayWallet', version: '1' };
 
 const EIP712Domain = [
   { name: 'name', type: 'string' },
@@ -112,13 +106,11 @@ export function createBurnIntent({
 }
 
 export function burnIntentTypedData(burnIntent: ReturnType<typeof createBurnIntent>) {
-  // Return typed data with BigInt values for wallet signing
   return {
     types: { EIP712Domain, TransferSpec, BurnIntent },
     domain,
     primaryType: 'BurnIntent' as const,
     message: {
-      // Keep BigInt values for wallet signing
       ...burnIntent,
       spec: {
         ...burnIntent.spec,

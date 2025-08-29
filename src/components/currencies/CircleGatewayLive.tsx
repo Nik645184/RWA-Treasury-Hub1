@@ -441,22 +441,46 @@ const CircleGatewayLive = () => {
     }
   };
 
-  const handleConnect = async () => {
+  const handleConnect = async (connectorId?: string) => {
     try {
-      console.log('Starting wallet connection...');
       console.log('Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
       
-      // Prefer injected connector (MetaMask) if available
-      const injectedConnector = connectors.find(c => c.id === 'injected');
+      const injectedConnector = connectors.find(c => 
+        c.id === 'injected' || 
+        c.id === 'com.metamask' || 
+        c.id === 'io.metamask' ||
+        c.id === 'metaMask'
+      );
+      const walletConnectConnector = connectors.find(c => 
+        c.id === 'walletConnect' || 
+        c.id === 'com.walletconnect' ||
+        c.id === 'walletconnect'
+      );
       
-      if (injectedConnector) {
-        console.log('Using injected connector:', injectedConnector.name);
-        await connect({ connector: injectedConnector });
-      } else if (connectors.length > 0) {
-        console.log('Using first available connector:', connectors[0].name);
-        await connect({ connector: connectors[0] });
+      let selectedConnector;
+      
+      if (connectorId === 'walletConnect' && walletConnectConnector) {
+        selectedConnector = walletConnectConnector;
+      } else if (window.ethereum && injectedConnector) {
+        selectedConnector = injectedConnector;
+      } else if (connectors[0]) {
+        // Fallback to first available connector
+        selectedConnector = connectors[0];
+      }
+      
+      if (selectedConnector) {
+        console.log('Connecting with:', selectedConnector.name, selectedConnector.id);
+        
+        // Add timeout for connection
+        const connectPromise = connect({ connector: selectedConnector });
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 15000)
+        );
+        
+        await Promise.race([connectPromise, timeoutPromise]);
+        console.log('Successfully connected!');
       } else {
-        console.error('No connectors available');
+        console.error('No connector available');
         toast({
           title: "Connection Error",
           description: "No wallet connector available. Please install MetaMask.",
@@ -465,11 +489,19 @@ const CircleGatewayLive = () => {
       }
     } catch (error: any) {
       console.error('Connection error:', error);
-      toast({
-        title: "Connection Failed",
-        description: error?.message || "Failed to connect wallet",
-        variant: "destructive"
-      });
+      if (error.message === 'Connection timeout') {
+        toast({
+          title: "Connection Timeout",
+          description: "Wallet connection timed out. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Connection Failed",
+          description: error?.message || "Failed to connect wallet",
+          variant: "destructive"
+        });
+      }
     }
   };
 
@@ -480,22 +512,7 @@ const CircleGatewayLive = () => {
   };
 
   const handleTransfer = async () => {
-    if (!amount) {
-      toast({
-        title: "Missing Amount",
-        description: "Please enter an amount to transfer",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    console.log('handleTransfer called with:', {
-      amount,
-      fromChain,
-      toChain,
-      isConnected,
-      address
-    });
+    if (!amount) return;
     
     // Use fromChain selected in UI, not current chain
     const fromDomain = chains.find(c => c.id === fromChain)?.domain;
@@ -522,26 +539,15 @@ const CircleGatewayLive = () => {
       toDomain
     });
     
-    try {
-      const txHash = await transferCrossChain(amount, fromDomain, toDomain, toChain);
-      if (txHash && typeof txHash === 'string') {
-        setMintTxHash(txHash);
-        setMintStatus('Transfer complete! USDC has been minted on destination chain.');
-      } else {
-        setMintStatus(null);
-        setMintTxHash(null);
-      }
-      setAmount('');
-    } catch (error: any) {
-      console.error('Transfer failed:', error);
+    const txHash = await transferCrossChain(amount, fromDomain, toDomain, toChain);
+    if (txHash && typeof txHash === 'string') {
+      setMintTxHash(txHash);
+      setMintStatus('Transfer complete! USDC has been minted on destination chain.');
+    } else {
       setMintStatus(null);
       setMintTxHash(null);
-      toast({
-        title: "Transfer Failed",
-        description: error?.message || "Failed to complete transfer",
-        variant: "destructive"
-      });
     }
+    setAmount('');
   };
 
   const formatAddress = (addr: string) => {
@@ -662,42 +668,42 @@ const CircleGatewayLive = () => {
                   </p>
                   <p className="text-lg font-bold">{parseFloat(usdcBalance).toFixed(2)} USDC</p>
                 </div>
-                <div className="space-y-2">
-                  <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
-                    <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      Total Gateway Balance
-                    </p>
-                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                      {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
-                    </p>
-                  </div>
-                  
-                  {/* Show balance breakdown by chain */}
-                  {unifiedBalances.filter(b => parseFloat(b.balance) > 0).length > 0 && (
-                    <div className="text-xs space-y-1 px-3">
-                      <p className="text-muted-foreground font-medium">By Chain:</p>
-                      {unifiedBalances.filter(b => parseFloat(b.balance) > 0).map(b => {
-                        const chainName = {
-                          0: 'Ethereum',
-                          1: 'Avalanche', 
-                          2: 'Optimism',
-                          3: 'Arbitrum',
-                          6: 'Base',
-                          7: 'Polygon',
-                          10: 'Unichain'
-                        }[b.domain] || `Domain ${b.domain}`;
-                        
-                        return (
-                          <div key={b.domain} className="flex justify-between items-center">
-                            <span className="text-muted-foreground">{chainName}:</span>
-                            <span className="font-mono font-medium">{parseFloat(b.balance).toFixed(6)} USDC</span>
-                          </div>
-                        );
-                      })}
+                  <div className="space-y-2">
+                    <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-900">
+                      <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <Shield className="h-3 w-3" />
+                        Total Gateway Balance
+                      </p>
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6)} USDC
+                      </p>
                     </div>
-                  )}
-                </div>
+                    
+                    {/* Show balance breakdown by chain */}
+                    {unifiedBalances.filter(b => parseFloat(b.balance) > 0).length > 0 && (
+                      <div className="text-xs space-y-1 px-3">
+                        <p className="text-muted-foreground font-medium">By Chain:</p>
+                        {unifiedBalances.filter(b => parseFloat(b.balance) > 0).map(b => {
+                          const chainName = {
+                            0: 'Ethereum',
+                            1: 'Avalanche', 
+                            2: 'Optimism',
+                            3: 'Arbitrum',
+                            6: 'Base',
+                            7: 'Polygon',
+                            10: 'Unichain'
+                          }[b.domain] || `Domain ${b.domain}`;
+                          
+                          return (
+                            <div key={b.domain} className="flex justify-between items-center">
+                              <span className="text-muted-foreground">{chainName}:</span>
+                              <span className="font-mono font-medium">{parseFloat(b.balance).toFixed(6)} USDC</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
               </div>
             </CardContent>
           </Card>
@@ -1220,7 +1226,6 @@ const CircleGatewayLive = () => {
               </Tabs>
             </CardContent>
           </Card>
-          
         </>
       )}
     </div>
