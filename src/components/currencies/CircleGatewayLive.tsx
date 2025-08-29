@@ -25,6 +25,7 @@ import {
   Activity,
   LogOut,
   Info,
+  RefreshCw,
 } from 'lucide-react';
 
 // Chain configurations
@@ -59,6 +60,8 @@ const CircleGatewayLive = () => {
   const [fromChain, setFromChain] = useState(84532); // Base Sepolia
   const [toChain, setToChain] = useState(421614); // Arbitrum Sepolia
   const [unifiedBalances, setUnifiedBalances] = useState<any[]>([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
 
   // Debug logging
   useEffect(() => {
@@ -75,6 +78,7 @@ const CircleGatewayLive = () => {
         if (balances) {
           console.log('Fetched unified balances:', balances);
           setUnifiedBalances(balances);
+          setLastRefreshTime(new Date());
         }
       }
     };
@@ -84,6 +88,25 @@ const CircleGatewayLive = () => {
     const interval = setInterval(fetchBalances, 15000);
     return () => clearInterval(interval);
   }, [isConnected, address, getUnifiedBalance, chainId]);
+
+  // Manual refresh function
+  const handleRefreshBalances = async () => {
+    if (!isConnected || !address || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      const balances = await getUnifiedBalance();
+      if (balances) {
+        console.log('Manually refreshed balances:', balances);
+        setUnifiedBalances(balances);
+        setLastRefreshTime(new Date());
+      }
+    } catch (error) {
+      console.error('Error refreshing balances:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleConnect = async (connectorId?: string) => {
     try {
@@ -505,19 +528,55 @@ const CircleGatewayLive = () => {
 
               <TabsContent value="balances" className="space-y-4">
                 <div className="space-y-3">
-                  <h3 className="font-medium">Unified Balance Across Chains</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium">Unified Balance Across Chains</h3>
+                    <div className="flex items-center gap-2">
+                      {lastRefreshTime && (
+                        <span className="text-xs text-muted-foreground">
+                          Last updated: {lastRefreshTime.toLocaleTimeString()}
+                        </span>
+                      )}
+                      <Button
+                        onClick={handleRefreshBalances}
+                        disabled={isRefreshing}
+                        size="sm"
+                        variant="outline"
+                      >
+                        {isRefreshing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        Refresh
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>Important:</strong> After depositing USDC to Gateway, wait for block finality:
+                      <ul className="mt-2 space-y-1 text-xs">
+                        <li>• <strong>Base:</strong> 13-19 minutes</li>
+                        <li>• <strong>Ethereum:</strong> 13-19 minutes</li>
+                        <li>• <strong>Avalanche:</strong> ~8 seconds</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                  
                   {unifiedBalances.length > 0 ? (
                     unifiedBalances.map((balance, idx) => {
                       const chain = chains.find(c => c.domain === balance.domain);
+                      const hasBalance = parseFloat(balance.balance) > 0;
                       return (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div key={idx} className={`flex items-center justify-between p-3 rounded-lg ${hasBalance ? 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900' : 'bg-muted'}`}>
                           <div className="flex items-center gap-3">
                             <div className={`w-2 h-2 rounded-full ${chain?.color || 'bg-gray-500'}`} />
                             <span className="font-medium">
                               {chain?.name || `Domain ${balance.domain}`}
                             </span>
                           </div>
-                          <span className="font-mono font-bold">
+                          <span className={`font-mono font-bold ${hasBalance ? 'text-green-600 dark:text-green-400' : ''}`}>
                             {balance.balance} USDC
                           </span>
                         </div>
