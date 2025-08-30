@@ -578,8 +578,36 @@ const CircleGatewayLive = () => {
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Estimated Fee</span>
-                      <span className="font-medium">~2.01 USDC</span>
+                      <span className="font-medium">
+                        {(() => {
+                          const sourceChain = chains.find(c => c.id === fromChain);
+                          const destChain = chains.find(c => c.id === toChain);
+                          const isSameChain = sourceChain?.domain === destChain?.domain;
+                          
+                          // Base fees per source chain (testnet)
+                          let baseFee = 0.02; // Default Avalanche
+                          if (sourceChain?.name.includes('Ethereum')) baseFee = 2.00;
+                          else if (sourceChain?.name.includes('Base')) baseFee = 0.01;
+                          
+                          // Transfer fee: 0.005% (0.00005) for cross-chain, 0 for same-chain
+                          const transferAmount = parseFloat(amount) || 0;
+                          const transferFee = isSameChain ? 0 : transferAmount * 0.00005;
+                          
+                          const totalFee = baseFee + transferFee;
+                          return `~${totalFee.toFixed(4)} USDC`;
+                        })()}
+                      </span>
                     </div>
+                    {(() => {
+                      const sourceChain = chains.find(c => c.id === fromChain);
+                      const destChain = chains.find(c => c.id === toChain);
+                      const isSameChain = sourceChain?.domain === destChain?.domain;
+                      return !isSameChain && (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Includes 0.005% transfer fee (promotional rate)
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <Button
