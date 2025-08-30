@@ -34,11 +34,11 @@ export function useCircleGateway() {
     hash: txHash,
   });
 
-  // Check if current chain is mainnet
-  const isMainnet = chain ? [1, 8453].includes(chain.id) : false;
+  // Always use mainnet
+  const isMainnet = true;
   
-  // Create Gateway client
-  const gatewayClient = new GatewayClient(isMainnet);
+  // Create Gateway client - always mainnet
+  const gatewayClient = new GatewayClient(true);
   
   // Get USDC address for current chain
   const usdcAddress = chain ? getUsdcAddress(chain.id) : undefined;

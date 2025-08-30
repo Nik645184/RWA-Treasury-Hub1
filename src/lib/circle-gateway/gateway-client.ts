@@ -60,8 +60,9 @@ export interface TransferResponse {
 export class GatewayClient {
   private apiUrl: string;
   
-  constructor(isMainnet: boolean = false) {
-    this.apiUrl = isMainnet ? GATEWAY_API_BASE_URL_MAINNET : GATEWAY_API_BASE_URL_TESTNET;
+  constructor(isMainnet: boolean = true) {
+    // Always use mainnet API
+    this.apiUrl = GATEWAY_API_BASE_URL_MAINNET;
   }
   
   // Get Gateway info
@@ -73,8 +74,8 @@ export class GatewayClient {
   // Check balances for a given depositor
   async balances(token: string, depositor: string, domains?: number[]): Promise<BalanceResponse> {
     if (!domains) {
-      // Only include supported domains (not Arbitrum for testnet)
-      domains = [0, 1, 6]; // Ethereum, Avalanche, Base
+      // Only include mainnet domains
+      domains = [0, 1, 2, 3, 6, 7, 10]; // Ethereum, Avalanche, OP, Arbitrum, Base, Polygon, Unichain
     }
     
     const response = await fetch(`${this.apiUrl}/balances`, {

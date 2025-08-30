@@ -26,16 +26,14 @@ import {
   LogOut,
 } from 'lucide-react';
 
-// Chain configurations
+// Chain configurations - MAINNET ONLY
 const chains = [
-  // Mainnet chains
   { id: 1, name: 'Ethereum', domain: 0, color: 'bg-indigo-500', isMainnet: true },
+  { id: 43114, name: 'Avalanche', domain: 1, color: 'bg-red-500', isMainnet: true },
+  { id: 10, name: 'OP Mainnet', domain: 2, color: 'bg-red-600', isMainnet: true },
+  { id: 42161, name: 'Arbitrum', domain: 3, color: 'bg-orange-500', isMainnet: true },
   { id: 8453, name: 'Base', domain: 6, color: 'bg-blue-500', isMainnet: true },
-  // Testnet chains
-  { id: 84532, name: 'Base Sepolia', domain: 6, color: 'bg-blue-500' },
-  { id: 421614, name: 'Arbitrum Sepolia', domain: 3, color: 'bg-orange-500' },
-  { id: 43113, name: 'Avalanche Fuji', domain: 1, color: 'bg-red-500' },
-  { id: 11155111, name: 'Ethereum Sepolia', domain: 0, color: 'bg-indigo-500' },
+  { id: 137, name: 'Polygon', domain: 7, color: 'bg-purple-500', isMainnet: true },
 ];
 
 const CircleGatewayLive = () => {
@@ -56,8 +54,8 @@ const CircleGatewayLive = () => {
   } = useCircleGateway();
 
   const [amount, setAmount] = useState('');
-  const [fromChain, setFromChain] = useState(84532); // Base Sepolia
-  const [toChain, setToChain] = useState(421614); // Arbitrum Sepolia
+  const [fromChain, setFromChain] = useState(1); // Ethereum mainnet
+  const [toChain, setToChain] = useState(8453); // Base mainnet
 
   // Debug logging
   useEffect(() => {
@@ -246,7 +244,7 @@ const CircleGatewayLive = () => {
                     <p>Connected to: {currentChain?.name || 'Unknown'} (ID: {chainId})</p>
                     <p>Network Type: {currentChain?.isMainnet ? 'Mainnet' : 'Testnet'}</p>
                     <p>Gateway Contract Balance: {gatewayBalance} USDC</p>
-                    <p>API Data Source: {currentChain?.isMainnet ? 'Mainnet API' : 'Testnet API'}</p>
+                    <p>API Data Source: Mainnet API</p>
                   </div>
                 </div>
                 <div className="text-right space-y-2">
@@ -291,27 +289,14 @@ const CircleGatewayLive = () => {
                   
                   {/* Gateway Wallet Contract Addresses */}
                   <div className="mt-4 pt-4 border-t">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Gateway Wallet Contract Addresses:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Gateway Wallet Contract Address (Mainnet):</p>
                     <div className="space-y-1">
                       <div className="text-xs">
-                        <span className="text-muted-foreground">Testnet: </span>
-                        <code className="bg-muted px-1 py-0.5 rounded">0x0077777d7EBA4688BDeF3E311b846F25870A19B9</code>
-                      </div>
-                      <div className="text-xs">
-                        <span className="text-muted-foreground">Mainnet: </span>
                         <code className="bg-muted px-1 py-0.5 rounded">0x77777777Dcc4d5A8B6E418Fd04D8997ef11000eE</code>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">
-                        Your USDC is stored in these non-custodial smart contracts across all supported chains.
+                        Your USDC is stored in this non-custodial smart contract across all supported mainnet chains.
                       </p>
-                      {currentChain?.isMainnet && unifiedBalances.some(b => parseFloat(b.balance) > 0) && (
-                        <Alert className="mt-2">
-                          <AlertCircle className="h-3 w-3" />
-                          <AlertDescription className="text-xs">
-                            Note: You're on mainnet but the API shows testnet balances. Make sure you're querying the correct network.
-                          </AlertDescription>
-                        </Alert>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -335,13 +320,13 @@ const CircleGatewayLive = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Connect your MetaMask wallet to deposit and transfer USDC across chains.
-                  Make sure you have testnet USDC and native tokens for gas.
-                </AlertDescription>
-              </Alert>
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Connect your MetaMask wallet to deposit and transfer USDC across mainnet chains.
+                      Make sure you have USDC and native tokens for gas.
+                    </AlertDescription>
+                  </Alert>
               
               {connectError && (
                 <Alert variant="destructive">
