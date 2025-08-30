@@ -441,9 +441,14 @@ const CircleGatewayLive = () => {
               <TabsContent value="deposit" className="space-y-4">
                 <div className="space-y-4">
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Deposit Amount
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium">
+                        Deposit Amount
+                      </label>
+                      <div className="text-sm text-muted-foreground">
+                        Available: <span className="font-mono font-medium">{parseFloat(usdcBalance).toFixed(6)} USDC</span>
+                      </div>
+                    </div>
                     <Input
                       type="number"
                       placeholder="Enter USDC amount"
@@ -451,6 +456,9 @@ const CircleGatewayLive = () => {
                       onChange={(e) => setAmount(e.target.value)}
                       className="text-lg"
                     />
+                    {amount && parseFloat(amount) > parseFloat(usdcBalance) && (
+                      <p className="text-xs text-destructive mt-1">Insufficient balance</p>
+                    )}
                   </div>
 
                   <Alert>
@@ -518,9 +526,26 @@ const CircleGatewayLive = () => {
                   </div>
 
                   <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Transfer Amount
-                    </label>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-sm font-medium">
+                        Transfer Amount
+                      </label>
+                      <div className="text-sm text-muted-foreground">
+                        Available on {chains.find(c => c.id === fromChain)?.name}: <span className="font-mono font-medium">
+                          {(() => {
+                            const selectedChain = chains.find(c => c.id === fromChain);
+                            if (selectedChain && currentChain && selectedChain.domain === currentChain.domain) {
+                              // If selected chain is current chain, show fresh gateway balance
+                              return parseFloat(gatewayBalance).toFixed(6);
+                            } else {
+                              // Otherwise show balance from API
+                              const chainBalance = unifiedBalances.find(b => b.domain === selectedChain?.domain);
+                              return chainBalance ? parseFloat(chainBalance.balance).toFixed(6) : '0.000000';
+                            }
+                          })()} USDC
+                        </span>
+                      </div>
+                    </div>
                     <Input
                       type="number"
                       placeholder="Enter USDC amount"
@@ -528,6 +553,19 @@ const CircleGatewayLive = () => {
                       onChange={(e) => setAmount(e.target.value)}
                       className="text-lg"
                     />
+                    {amount && (() => {
+                      const selectedChain = chains.find(c => c.id === fromChain);
+                      let availableBalance = 0;
+                      if (selectedChain && currentChain && selectedChain.domain === currentChain.domain) {
+                        availableBalance = parseFloat(gatewayBalance);
+                      } else {
+                        const chainBalance = unifiedBalances.find(b => b.domain === selectedChain?.domain);
+                        availableBalance = chainBalance ? parseFloat(chainBalance.balance) : 0;
+                      }
+                      return parseFloat(amount) > availableBalance && (
+                        <p className="text-xs text-destructive mt-1">Insufficient balance on source chain</p>
+                      );
+                    })()}
                   </div>
 
                   <div className="p-4 bg-muted rounded-lg space-y-2">
