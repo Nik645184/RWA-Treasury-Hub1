@@ -143,11 +143,16 @@ const CircleGatewayLive = () => {
 
   const handleTransfer = async () => {
     if (!amount) return;
-    const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
-    const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-    // Pass the destination chain ID as the 4th parameter
-    await transferCrossChain(amount, fromDomain, toDomain, toChain);
-    setAmount('');
+    try {
+      const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
+      const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
+      // Pass the destination chain ID as the 4th parameter
+      await transferCrossChain(amount, fromDomain, toDomain, toChain);
+      setAmount('');
+    } catch (error) {
+      // Error is already handled by toast in transferCrossChain
+      console.error('Transfer failed:', error);
+    }
   };
 
   const formatAddress = (addr: string) => {
@@ -226,18 +231,8 @@ const CircleGatewayLive = () => {
                   </div>
                   <p className="text-4xl font-bold text-primary">
                     {(() => {
-                      // If we have fresh gateway balance on current chain, use it to calculate more accurate total
-                      if (gatewayBalance && currentChain && unifiedBalances && unifiedBalances.length > 0) {
-                        const currentChainBalance = unifiedBalances.find(b => b.domain === currentChain.domain);
-                        const otherChainsTotal = unifiedBalances
-                          .filter(b => b.domain !== currentChain.domain)
-                          .reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
-                        
-                        // Use actual contract balance for current chain + API data for other chains
-                        const total = parseFloat(gatewayBalance) + otherChainsTotal;
-                        return total.toFixed(6);
-                      }
-                      // Fallback to API data
+                      // Unified balance should be the same across all chains - it's the sum of all Gateway deposits
+                      // Only use API data since it's the authoritative source for cross-chain balances
                       return unifiedBalances && unifiedBalances.length > 0 
                         ? unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6) 
                         : '0.000000';
