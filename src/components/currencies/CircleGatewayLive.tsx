@@ -143,11 +143,16 @@ const CircleGatewayLive = () => {
 
   const handleTransfer = async () => {
     if (!amount) return;
-    const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
-    const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-    // Pass the destination chain ID as the 4th parameter
-    await transferCrossChain(amount, fromDomain, toDomain, toChain);
-    setAmount('');
+    try {
+      const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
+      const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
+      // Pass the destination chain ID as the 4th parameter
+      await transferCrossChain(amount, fromDomain, toDomain, toChain);
+      setAmount('');
+    } catch (error) {
+      // Error is already handled by toast in transferCrossChain
+      console.error('Transfer failed:', error);
+    }
   };
 
   const formatAddress = (addr: string) => {
