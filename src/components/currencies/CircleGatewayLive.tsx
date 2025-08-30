@@ -143,16 +143,11 @@ const CircleGatewayLive = () => {
 
   const handleTransfer = async () => {
     if (!amount) return;
-    try {
-      const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
-      const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
-      // Pass the destination chain ID as the 4th parameter
-      await transferCrossChain(amount, fromDomain, toDomain, toChain);
-      setAmount('');
-    } catch (error) {
-      // Error is already handled by toast in transferCrossChain
-      console.error('Transfer failed:', error);
-    }
+    const fromDomain = chains.find(c => c.id === fromChain)?.domain || 0;
+    const toDomain = chains.find(c => c.id === toChain)?.domain || 0;
+    // Pass the destination chain ID as the 4th parameter
+    await transferCrossChain(amount, fromDomain, toDomain, toChain);
+    setAmount('');
   };
 
   const formatAddress = (addr: string) => {
@@ -231,21 +226,25 @@ const CircleGatewayLive = () => {
                   </div>
                   <p className="text-4xl font-bold text-primary">
                     {(() => {
-                      // On mainnet, show only the current chain's Gateway balance
-                      // since API returns testnet data which doesn't match mainnet
-                      if (currentChain?.isMainnet) {
-                        return gatewayBalance ? parseFloat(gatewayBalance).toFixed(6) : '0.000000';
+                      // If we have fresh gateway balance on current chain, use it to calculate more accurate total
+                      if (gatewayBalance && currentChain && unifiedBalances && unifiedBalances.length > 0) {
+                        const currentChainBalance = unifiedBalances.find(b => b.domain === currentChain.domain);
+                        const otherChainsTotal = unifiedBalances
+                          .filter(b => b.domain !== currentChain.domain)
+                          .reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0);
+                        
+                        // Use actual contract balance for current chain + API data for other chains
+                        const total = parseFloat(gatewayBalance) + otherChainsTotal;
+                        return total.toFixed(6);
                       }
-                      // On testnet, show unified balance from API
+                      // Fallback to API data
                       return unifiedBalances && unifiedBalances.length > 0 
                         ? unifiedBalances.reduce((sum, b) => sum + parseFloat(b.balance || '0'), 0).toFixed(6) 
                         : '0.000000';
                     })()} USDC
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {currentChain?.isMainnet ? 
-                      `Gateway balance on ${currentChain?.name}` : 
-                      'Instantly accessible across all supported chains'}
+                    Instantly accessible across all supported chains
                   </p>
                   {/* Debug info */}
                   <div className="text-xs text-muted-foreground space-y-1 mt-2 p-2 bg-muted/50 rounded">
@@ -261,39 +260,15 @@ const CircleGatewayLive = () => {
                     Instant Transfer
                   </Badge>
                   <p className="text-xs text-muted-foreground">
-                    {currentChain?.isMainnet ? 
-                      'Single chain view' : 
-                      `Active on ${unifiedBalances.filter(b => parseFloat(b.balance) > 0).length} chain(s)`}
+                    Active on {unifiedBalances.filter(b => parseFloat(b.balance) > 0).length} chain(s)
                   </p>
                 </div>
               </div>
               
-              {/* Show different info for mainnet vs testnet */}
-              {currentChain?.isMainnet ? (
-                <div className="mt-4 pt-4 border-t">
-                  <Alert className="mb-3">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      <strong>Mainnet Mode:</strong> Showing Gateway balance for {currentChain?.name} only. 
-                      Cross-chain unified balances are currently available only on testnet.
-                    </AlertDescription>
-                  </Alert>
-                  <div className="space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Current Chain Balance:</p>
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${currentChain?.color}`} />
-                        <span className="text-sm">{currentChain?.name}</span>
-                      </div>
-                      <span className="text-sm font-mono">
-                        {gatewayBalance ? parseFloat(gatewayBalance).toFixed(6) : '0.000000'} USDC
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ) : unifiedBalances && unifiedBalances.length > 0 && (
+              {/* Breakdown by chain */}
+              {unifiedBalances && unifiedBalances.length > 0 && (
                 <div className="mt-4 pt-4 border-t space-y-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution (Testnet):</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-2">Balance Distribution (from API):</p>
                   {unifiedBalances.map((balance) => {
                     const chain = chains.find(c => c.domain === balance.domain);
                     const isCurrentChain = chain && currentChain && chain.domain === currentChain.domain;
