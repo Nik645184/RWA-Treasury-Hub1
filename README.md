@@ -8,7 +8,7 @@
 
 **Revolutionary Institutional Treasury Management with Instant Cross-Chain USDC Operations**
 
-[🚀 Live Demo](https://rwatreasuryhub.io) • [📖 Documentation](https://docs.rwatreasuryhub.io) • [🎥 Video Demo](https://youtube.com/watch?v=demo)
+[🚀 Live Demo](https://rwa-treasury-hub.lovable.app) • [📖 Documentation](https://dorahacks.io/buidl/32084) • [🎥 Video Demo](https://www.youtube.com/watch?v=qLaHKyWwQQA&t=9s)
 
 </div>
 
@@ -206,9 +206,8 @@ VITE_WALLET_CONNECT_PROJECT_ID=your_project_id_here
 
 ---
 
-## 🤝 **Contributing**
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+
 
 ### **Development Workflow**
 1. Fork the repository
@@ -221,16 +220,8 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 📞 **Contact & Support**
 
-- **Email**: hackathon@rwatreasuryhub.io
-- **Discord**: [RWA Treasury Hub Community](https://discord.gg/rwatreasuryhub)
-- **Twitter**: [@RWATreasuryHub](https://twitter.com/rwatreasuryhub)
-- **LinkedIn**: [RWA Treasury Hub](https://linkedin.com/company/rwa-treasury-hub)
-
----
-
-## 📄 **License**
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **Email**: nik@itispay.com
+- **LinkedIn**: [Founder](https://www.linkedin.com/in/nikolay-perkov/)
 
 ---
 
